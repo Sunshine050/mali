@@ -624,6 +624,16 @@ app.get("/health", (req, res) => {
   });
 });
 
+/** Lightweight endpoint for uptime pings to reduce Render cold starts. */
+app.get("/warmup", (req, res) => {
+  res.status(200).json({
+    ok: true,
+    service: "mali-checkin",
+    warmed: true,
+    timestamp: new Date().toISOString(),
+  });
+});
+
 app.listen(PORT, () => {
   console.log(
     `MALI Check-in server running at ${getPublicBaseUrl() || `http://localhost:${PORT}`}`,

@@ -1,0 +1,14 @@
+name: Keep Render Awake
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping warmup endpoint
+        run: |
+          curl --fail --silent --show-error "https://mali-2upq.onrender.com/warmup" > /dev/null

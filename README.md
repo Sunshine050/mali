@@ -96,3 +96,11 @@ Open:
 - **อย่าใส่ `PORT` บน Render** — ให้แพลตฟอร์มกำหนด `PORT` เอง
 - **`LINE_OA_BASIC_ID`:** ต้องเป็น `@057xhooz` (มี @) — ถ้าพิมพ์ `a057...` โค้ดจะพยายามแก้เป็น `@057...` อัตโนมัติ
 - **Google Client ID / Sheet ID:** คัดลอกจาก Console ใหม่ทั้งดุ้น ตัวเลขผิดหนึ่งตัวจะล็อกอิน/เขียน Sheet ไม่ได้
+
+## 6) Keep Alive for Render Free
+
+- มี endpoint เบาๆ ที่ `GET /warmup`
+- มี GitHub Actions workflow ที่ `.github/workflows/keep-render-awake.yml`
+- workflow จะ ping `https://mali-2upq.onrender.com/warmup` ทุก 5 นาที และกดรันเองได้จากแท็บ Actions
+- หลัง push ขึ้น GitHub ให้เข้า repo -> `Actions` -> เปิดใช้งาน workflow ถ้าระบบถาม
+- วิธีนี้ช่วยลดโอกาส cold start แต่ไม่ได้การันตี 100% เท่ากับอัปเกรดเป็น Starter plan
