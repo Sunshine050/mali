@@ -1,0 +1,21 @@
+{
+  "name": "lineoa-mali-checkin",
+  "version": "1.0.0",
+  "description": "MALI event one-scan check-in flow (LINE + Google + Sheets)",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "setup:sheet": "node scripts/setup-google-sheet.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "axios": "^1.9.0",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2",
+    "googleapis": "^140.0.1",
+    "uuid": "^11.1.0"
+  }
+}

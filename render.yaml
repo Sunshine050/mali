@@ -1,0 +1,10 @@
+# Blueprint: https://render.com/docs/blueprint-spec
+# หลัง deploy สำเร็จ ตั้งค่า Environment ใน Dashboard ตาม README (Deploy)
+services:
+  - type: web
+    name: mali-checkin
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
