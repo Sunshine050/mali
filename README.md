@@ -68,7 +68,7 @@ Open:
 
 | Key                                                   | ค่า                                                                          |
 | ----------------------------------------------------- | ---------------------------------------------------------------------------- |
-| `BASE_URL`                                            | `https://<ชื่อ-service>.onrender.com` (ไม่มี slash ท้าย)                     |
+| `BASE_URL`                                            | URL จริงของ service (ไม่มี `/` ท้าย) — **ต้องตรงกับ Callback ใน LINE ทุกตัวอักษร**; ถ้าไม่ใส่ โค้ดจะ fallback `RENDER_EXTERNAL_URL` ของ Render |
 | `PORT`                                                | ไม่ต้องใส่ — Render กำหนดให้                                                 |
 | `LINE_LOGIN_CHANNEL_ID` / `LINE_LOGIN_CHANNEL_SECRET` | จาก LINE Login channel                                                       |
 | `LINE_OA_ADD_FRIEND_URL` / `LINE_OA_BASIC_ID`         | ตามเดิม                                                                      |

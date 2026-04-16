@@ -12,8 +12,30 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
-const BASE_URL = process.env.BASE_URL;
 const EVENT_ID = process.env.EVENT_ID || "MALI_EVENT";
+
+/** URL สาธารณะของเว็บ — ต้องตรงกับ Callback ใน LINE / Google ทุกตัวอักษร */
+function getPublicBaseUrl() {
+  const explicit = (process.env.BASE_URL || "").trim().replace(/\/+$/, "");
+  const renderUrl = (process.env.RENDER_EXTERNAL_URL || "").trim().replace(/\/+$/, "");
+  const base = explicit || renderUrl;
+  if (explicit && renderUrl && explicit !== renderUrl) {
+    console.warn(
+      `[mali-checkin] BASE_URL (${explicit}) ≠ RENDER_EXTERNAL_URL (${renderUrl}); ใช้ BASE_URL — ถ้า LINE error ให้แก้ให้ตรงกัน`,
+    );
+  }
+  return base;
+}
+
+function getLineRedirectUri() {
+  const base = getPublicBaseUrl();
+  if (!base) {
+    throw new Error(
+      "ตั้งค่า BASE_URL (https://your-host.onrender.com) หรือให้ Render ตั้ง RENDER_EXTERNAL_URL",
+    );
+  }
+  return `${base}/auth/line/callback`;
+}
 
 const LINE_LOGIN_CHANNEL_ID = process.env.LINE_LOGIN_CHANNEL_ID;
 const LINE_LOGIN_CHANNEL_SECRET = process.env.LINE_LOGIN_CHANNEL_SECRET;
@@ -189,7 +211,9 @@ app.get("/", (req, res) => {
 
 /** หน้าพิมพ์/ยื่นหน้างาน: QR ชี้ไปที่ /checkin (สแกน = เปิด URL เดียวกับกดลิงก์) */
 app.get("/poster", (req, res) => {
-  const base = (BASE_URL || `http://localhost:${PORT}`).replace(/\/$/, "");
+  const base = (
+    getPublicBaseUrl() || `http://localhost:${PORT}`
+  ).replace(/\/$/, "");
   const checkinUrl = `${base}/checkin`;
   const qrImgSrc = `https://api.qrserver.com/v1/create-qr-code/?size=420x420&data=${encodeURIComponent(checkinUrl)}`;
   const body = `
@@ -204,6 +228,13 @@ app.get("/poster", (req, res) => {
 });
 
 app.get("/checkin", (req, res) => {
+  let lineRedirectUriRaw;
+  try {
+    lineRedirectUriRaw = getLineRedirectUri();
+  } catch (e) {
+    return res.status(500).send(String(e.message || e));
+  }
+
   let lineState;
   let googleState;
   try {
@@ -213,7 +244,7 @@ app.get("/checkin", (req, res) => {
     return res.status(500).send(String(e.message || e));
   }
 
-  const lineRedirectUri = encodeURIComponent(`${BASE_URL}/auth/line/callback`);
+  const lineRedirectUri = encodeURIComponent(lineRedirectUriRaw);
   const lineAuthUrl =
     `https://access.line.me/oauth2/v2.1/authorize?response_type=code` +
     `&client_id=${encodeURIComponent(LINE_LOGIN_CHANNEL_ID)}` +
@@ -271,12 +302,13 @@ app.get("/auth/line/callback", async (req, res) => {
       );
     }
 
+    const lineRedirectUriRaw = getLineRedirectUri();
     const tokenResp = await axios.post(
       "https://api.line.me/oauth2/v2.1/token",
       new URLSearchParams({
         grant_type: "authorization_code",
         code,
-        redirect_uri: `${BASE_URL}/auth/line/callback`,
+        redirect_uri: lineRedirectUriRaw,
         client_id: LINE_LOGIN_CHANNEL_ID,
         client_secret: LINE_LOGIN_CHANNEL_SECRET,
       }).toString(),
@@ -318,9 +350,15 @@ app.get("/auth/line/callback", async (req, res) => {
   } catch (error) {
     const lineBody =
       error.response?.data != null ? JSON.stringify(error.response.data) : "";
+    let lineRedirectHint = "";
+    try {
+      lineRedirectHint = getLineRedirectUri();
+    } catch {
+      lineRedirectHint = "(ตั้ง BASE_URL)";
+    }
     const hint =
       error.response?.status === 400
-        ? " มักเกิดจาก (1) Channel secret ไม่ใช่ของ LINE Login channel เดียวกับ Channel ID (2) redirect_uri ไม่ตรงกับที่ลงทะเบียนใน LINE Developers"
+        ? ` มักเกิดจาก: (1) redirect_uri ไม่ตรง — ใน LINE Developers ต้องมี URL เดียวกับ ${lineRedirectHint} (2) รีเฟรชหน้า callback / โค้ดใช้ซ้ำ — เริ่มใหม่จาก /checkin (3) Channel secret ไม่ใช่ของ LINE Login channel`
         : "";
     res
       .status(500)
@@ -404,6 +442,11 @@ app.get("/health", (req, res) => {
 
 app.listen(PORT, () => {
   console.log(
-    `MALI Check-in server running at ${BASE_URL || `http://localhost:${PORT}`}`,
+    `MALI Check-in server running at ${getPublicBaseUrl() || `http://localhost:${PORT}`}`,
   );
+  try {
+    console.log(`LINE OAuth redirect_uri (ลงทะเบียนใน LINE Developers ให้ตรง): ${getLineRedirectUri()}`);
+  } catch (e) {
+    console.warn(String(e.message || e));
+  }
 });
