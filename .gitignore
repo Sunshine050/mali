@@ -1,3 +1,6 @@
 node_modules/
 .env
 *.log
+# Google service account JSON — ห้าม commit
+mali-*.json
+*-service-account*.json
