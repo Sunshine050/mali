@@ -66,17 +66,17 @@ Open:
 2. ใน [Render](https://dashboard.render.com/) → **New** → **Blueprint** → เลือก repo ที่มี [`render.yaml`](render.yaml) หรือสร้าง **Web Service** เอง: Runtime Node, Build `npm install`, Start `npm start`, Health check path `/health`
 3. หลังได้ URL เช่น `https://mali-checkin.onrender.com` ให้ตั้ง **Environment** ใน Render (อย่า commit `.env`):
 
-| Key                                                   | ค่า                                                                          |
-| ----------------------------------------------------- | ---------------------------------------------------------------------------- |
+| Key                                                   | ค่า                                                                                                                                            |
+| ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
 | `BASE_URL`                                            | URL จริงของ service (ไม่มี `/` ท้าย) — **ต้องตรงกับ Callback ใน LINE ทุกตัวอักษร**; ถ้าไม่ใส่ โค้ดจะ fallback `RENDER_EXTERNAL_URL` ของ Render |
-| `PORT`                                                | ไม่ต้องใส่ — Render กำหนดให้                                                 |
-| `LINE_LOGIN_CHANNEL_ID` / `LINE_LOGIN_CHANNEL_SECRET` | จาก LINE Login channel                                                       |
-| `LINE_OA_ADD_FRIEND_URL` / `LINE_OA_BASIC_ID`         | ตามเดิม                                                                      |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`           | จาก Google Cloud                                                             |
-| `GOOGLE_REDIRECT_URI`                                 | `https://<host>/auth/google/callback`                                        |
-| `GOOGLE_SERVICE_ACCOUNT_JSON`                         | วาง **เนื้อหาไฟล์ JSON ทั้งก้อน** (บรรทัดเดียวหรือ escape ตามที่ Render รับ) |
-| `GOOGLE_SHEET_ID` / `GOOGLE_SHEET_TAB`                | ตามชีตจริง                                                                   |
-| ค่าอื่นใน `.env` ที่ใช้ local                         | คัดลอกมาใส่ให้ครบ                                                            |
+| `PORT`                                                | ไม่ต้องใส่ — Render กำหนดให้                                                                                                                   |
+| `LINE_LOGIN_CHANNEL_ID` / `LINE_LOGIN_CHANNEL_SECRET` | จาก LINE Login channel                                                                                                                         |
+| `LINE_OA_ADD_FRIEND_URL` / `LINE_OA_BASIC_ID`         | ตามเดิม                                                                                                                                        |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`           | จาก Google Cloud                                                                                                                               |
+| `GOOGLE_REDIRECT_URI`                                 | `https://<host>/auth/google/callback`                                                                                                          |
+| `GOOGLE_SERVICE_ACCOUNT_JSON`                         | วาง **เนื้อหาไฟล์ JSON ทั้งก้อน** (บรรทัดเดียวหรือ escape ตามที่ Render รับ)                                                                   |
+| `GOOGLE_SHEET_ID` / `GOOGLE_SHEET_TAB`                | ตามชีตจริง                                                                                                                                     |
+| ค่าอื่นใน `.env` ที่ใช้ local                         | คัดลอกมาใส่ให้ครบ                                                                                                                              |
 
 4. **LINE Developers** → LINE Login channel → Callback URL เพิ่ม  
    `https://<host>/auth/line/callback`
@@ -87,3 +87,10 @@ Open:
 
 **หมายเหตุ:** แพลน `free` อาจหลับหลังไม่มี traffic — เทสเฟสแรกได้ ถ้าต้องการไม่หลับใช้แพลนมีค่า  
 **Webhook:** ไม่จำเป็นสำหรับเฟส “สแกน + ล็อกอิน + เขียน Sheet”
+
+### Render — ข้อผิดพลาดที่พบบ่อย
+
+- **Service account:** ใช้ตัวแปร **`GOOGLE_SERVICE_ACCOUNT_JSON`** วาง JSON ทั้งก้อน — **อย่า**ใส่ JSON ในชื่อ `GOOGLE_SERVICE_ACCOUNT_KEY_PATH` (ชื่อนั้นสำหรับ path ไฟล์บนเครื่อง dev เท่านั้น)
+- **อย่าใส่ `PORT` บน Render** — ให้แพลตฟอร์มกำหนด `PORT` เอง
+- **`LINE_OA_BASIC_ID`:** ต้องเป็น `@057xhooz` (มี @) — ถ้าพิมพ์ `a057...` โค้ดจะพยายามแก้เป็น `@057...` อัตโนมัติ
+- **Google Client ID / Sheet ID:** คัดลอกจาก Console ใหม่ทั้งดุ้น ตัวเลขผิดหนึ่งตัวจะล็อกอิน/เขียน Sheet ไม่ได้

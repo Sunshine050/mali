@@ -17,7 +17,9 @@ const EVENT_ID = process.env.EVENT_ID || "MALI_EVENT";
 /** URL สาธารณะของเว็บ — ต้องตรงกับ Callback ใน LINE / Google ทุกตัวอักษร */
 function getPublicBaseUrl() {
   const explicit = (process.env.BASE_URL || "").trim().replace(/\/+$/, "");
-  const renderUrl = (process.env.RENDER_EXTERNAL_URL || "").trim().replace(/\/+$/, "");
+  const renderUrl = (process.env.RENDER_EXTERNAL_URL || "")
+    .trim()
+    .replace(/\/+$/, "");
   const base = explicit || renderUrl;
   if (explicit && renderUrl && explicit !== renderUrl) {
     console.warn(
@@ -141,8 +143,15 @@ function normalizeLineBasicId(id) {
   if (!id) {
     return "";
   }
-  const s = String(id).trim();
-  return s.startsWith("@") ? s : `@${s}`;
+  let s = String(id).trim();
+  // พิมพ์ "a" แทน "@" บนมือถือ เช่น a057xhooz → @057xhooz
+  if (/^a(?=[0-9])/i.test(s)) {
+    s = `@${s.slice(1)}`;
+  }
+  if (!s.startsWith("@")) {
+    s = `@${s}`;
+  }
+  return s;
 }
 
 function htmlAttr(s) {
@@ -211,9 +220,10 @@ app.get("/", (req, res) => {
 
 /** หน้าพิมพ์/ยื่นหน้างาน: QR ชี้ไปที่ /checkin (สแกน = เปิด URL เดียวกับกดลิงก์) */
 app.get("/poster", (req, res) => {
-  const base = (
-    getPublicBaseUrl() || `http://localhost:${PORT}`
-  ).replace(/\/$/, "");
+  const base = (getPublicBaseUrl() || `http://localhost:${PORT}`).replace(
+    /\/$/,
+    "",
+  );
   const checkinUrl = `${base}/checkin`;
   const qrImgSrc = `https://api.qrserver.com/v1/create-qr-code/?size=420x420&data=${encodeURIComponent(checkinUrl)}`;
   const body = `
@@ -445,7 +455,9 @@ app.listen(PORT, () => {
     `MALI Check-in server running at ${getPublicBaseUrl() || `http://localhost:${PORT}`}`,
   );
   try {
-    console.log(`LINE OAuth redirect_uri (ลงทะเบียนใน LINE Developers ให้ตรง): ${getLineRedirectUri()}`);
+    console.log(
+      `LINE OAuth redirect_uri (ลงทะเบียนใน LINE Developers ให้ตรง): ${getLineRedirectUri()}`,
+    );
   } catch (e) {
     console.warn(String(e.message || e));
   }
