@@ -53,6 +53,8 @@ Open:
 
 **เรื่อง QR vs ลิงก์:** QR หนึ่งรูป = เก็บ URL หนึ่งเส้น — ผู้ใช้สแกนด้วยกล้องแล้วเบราว์เซอร์เปิด URL นั้น ไม่ใช่คนละช่องทางกับลิงก์
 
+**สร้าง QR จาก `https://<host>`:** (1) เปิด `https://<host>/poster` แล้วบันทึกภาพ QR / พิมพ์หน้า (2) ใช้ [QR Server](https://goqr.me/) หรือ Canva ใส่ URL `https://<host>/checkin` (3) Google Sheet / LINE OA Manager ก็มีเครื่องมือสร้าง QR จากลิงก์ได้
+
 ## 4) Important
 
 - OAuth `state` is **signed** (not stored in memory), so `node --watch` restarts do not break LINE/Google login mid-flow.

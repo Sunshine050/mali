@@ -169,14 +169,19 @@ function addOaSectionHtml() {
   let buttons = "";
   if (lineAppUrl && webUrl) {
     buttons = `
-      <a class="btn primary" href="${htmlAttr(lineAppUrl)}">เปิด LINE เพื่อเพิ่มเพื่อน (แนะนำ · มือถือ)</a>
-      <a class="btn" href="${htmlAttr(webUrl)}">เปิดแบบลิงก์เว็บ</a>`;
+      <div class="actions">
+        <a class="btn btn-line" href="${htmlAttr(lineAppUrl)}">เปิด LINE เพื่อเพิ่มเพื่อน (แนะนำ · มือถือ)</a>
+        <a class="btn btn-secondary" href="${htmlAttr(webUrl)}">เปิดแบบลิงก์เว็บ</a>
+      </div>`;
   } else if (webUrl) {
-    buttons = `<a class="btn primary" href="${htmlAttr(webUrl)}">Add LINE OA</a>`;
+    buttons = `<div class="actions"><a class="btn btn-line" href="${htmlAttr(webUrl)}">เพิ่มเพื่อน LINE Official</a></div>`;
   }
   return `${buttons}
-      <p class="muted">บนคอมพิวเตอร์ LINE มักแสดงหน้าให้สแกน QR ในมือถือ — ลูกค้าที่ใช้มือถือกดปุ่ม &quot;เปิด LINE&quot; ด้านบนเพื่อเข้าแอปโดยตรง (ไม่ต้องสแกนรอบสอง)</p>
-      <p class="muted">ถ้าล็อกอินด้วย LINE แล้วระบบให้ Add OA ในขั้นตอน OAuth อยู่แล้ว อาจไม่ต้องกดซ้ำ</p>`;
+      <div class="note-box">
+        <strong>สำหรับผู้ใช้มือถือ</strong> กดปุ่มเขียวเพื่อเปิดแอป LINE โดยตรง ไม่ต้องสแกน QR บนหน้าเว็บอีกครั้ง<br /><br />
+        <strong>สำหรับคอมพิวเตอร์</strong> LINE อาจแสดงหน้าให้สแกน QR — เป็นรูปแบบมาตรฐานของ LINE<br /><br />
+        หากล็อกอินด้วย LINE แล้วระบบให้ Add OA ในขั้นตอนก่อนหน้า อาจไม่ต้องกดซ้ำ
+      </div>`;
 }
 
 async function appendToSheet(row) {
@@ -192,23 +197,171 @@ async function appendToSheet(row) {
 
 function htmlPage(title, body) {
   return `<!doctype html>
-<html>
+<html lang="th">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>${title}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f2d24" />
+  <title>${htmlAttr(title)}</title>
   <style>
-    body { font-family: Arial, sans-serif; max-width: 560px; margin: 24px auto; line-height: 1.5; padding: 0 16px; }
-    .card { border: 1px solid #ddd; border-radius: 10px; padding: 18px; }
-    .btn { display: inline-block; margin: 8px 8px 0 0; padding: 10px 14px; border-radius: 8px; text-decoration: none; border: 1px solid #222; }
-    .primary { background: #111; color: #fff; }
-    .muted { color: #666; font-size: 14px; }
-    code { background: #f7f7f7; padding: 2px 4px; border-radius: 4px; }
+    :root {
+      --bg: #e8eeeb;
+      --surface: #ffffff;
+      --ink: #14221e;
+      --muted: #5a6d66;
+      --line: #06c755;
+      --line-dark: #059648;
+      --google-blue: #1a73e8;
+      --border: rgba(15, 45, 36, 0.12);
+      --shadow: 0 12px 40px rgba(15, 45, 36, 0.08);
+      --radius: 16px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100dvh;
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: linear-gradient(165deg, var(--bg) 0%, #dce6e1 48%, #cfd9d3 100%);
+      color: var(--ink);
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+    }
+    .shell {
+      max-width: 420px;
+      margin: 0 auto;
+      padding: 20px 18px 32px;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    .brand {
+      text-align: center;
+      margin-bottom: 18px;
+      letter-spacing: 0.28em;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+    .brand span { color: var(--line-dark); letter-spacing: 0.15em; }
+    .card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 28px 22px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+    }
+    .eyebrow {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin: 0 0 8px;
+    }
+    h1 {
+      font-size: 1.45rem;
+      font-weight: 700;
+      margin: 0 0 10px;
+      line-height: 1.25;
+      color: var(--ink);
+    }
+    .lead { margin: 0 0 22px; color: var(--muted); font-size: 15px; }
+    .actions { display: flex; flex-direction: column; gap: 12px; }
+    .btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      padding: 14px 18px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 15px;
+      border: none;
+      cursor: pointer;
+      transition: transform 0.12s ease, box-shadow 0.12s ease;
+    }
+    .btn:active { transform: scale(0.98); }
+    .btn-line {
+      background: var(--line);
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(6, 199, 85, 0.35);
+    }
+    .btn-line:hover { background: var(--line-dark); color: #fff; }
+    .btn-google {
+      background: var(--surface);
+      color: var(--google-blue);
+      border: 1.5px solid rgba(26, 115, 232, 0.35);
+    }
+    .btn-google:hover { background: #f8fbff; }
+    .btn-secondary {
+      background: var(--surface);
+      color: var(--ink);
+      border: 1.5px solid var(--border);
+    }
+    .btn-secondary:hover { background: #f6f8f7; }
+    .fineprint {
+      margin: 18px 0 0;
+      font-size: 12px;
+      color: var(--muted);
+      text-align: center;
+    }
+    .muted { color: var(--muted); font-size: 13px; margin: 12px 0 0; }
+    .note-box {
+      margin-top: 18px;
+      padding: 12px 14px;
+      background: #f4f8f6;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .note-box strong { color: var(--ink); }
+    .success-icon {
+      width: 52px;
+      height: 52px;
+      margin: 0 auto 16px;
+      background: linear-gradient(135deg, #0a5c3f, var(--line));
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 28px;
+      line-height: 1;
+      box-shadow: 0 8px 24px rgba(6, 199, 85, 0.3);
+    }
+    .success-title { text-align: center; }
+    .success-title h1 { margin-bottom: 6px; }
+    .divider { height: 1px; background: var(--border); margin: 20px 0; }
+    code {
+      font-size: 12px;
+      background: #eef3f0;
+      padding: 2px 6px;
+      border-radius: 4px;
+      word-break: break-all;
+    }
+    .qr-wrap {
+      text-align: center;
+      margin: 16px 0;
+    }
+    .qr-wrap img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+    }
   </style>
 </head>
 <body>
-  <div class="card">
-    ${body}
+  <div class="shell">
+    <div class="brand">House of <span>MALI</span></div>
+    <div class="card">
+      ${body}
+    </div>
   </div>
 </body>
 </html>`;
@@ -227,14 +380,18 @@ app.get("/poster", (req, res) => {
   const checkinUrl = `${base}/checkin`;
   const qrImgSrc = `https://api.qrserver.com/v1/create-qr-code/?size=420x420&data=${encodeURIComponent(checkinUrl)}`;
   const body = `
-    <h2>QR ลงทะเบียนเข้างาน</h2>
-    <p>ผู้เข้างาน<strong>สแกน QR นี้ครั้งเดียว</strong>เพื่อเข้าหน้า Login ลงทะเบียน — QR คือรูปที่เก็บ URL เดียวกับการเปิดลิงก์จากกล้อง</p>
-    <p><img src="${htmlAttr(qrImgSrc)}" width="420" height="420" alt="Check-in QR" style="max-width:100%;height:auto;border:1px solid #ddd" /></p>
-    <p class="muted"><strong>URL ใน QR:</strong> <code>${htmlAttr(checkinUrl)}</code></p>
-    <p class="muted">วันงานจริง: ตั้ง <code>BASE_URL</code> เป็น HTTPS โดเมนจริง แล้วพิมพ์หน้านี้หรือส่งออก PNG จากเครื่องมือสร้าง QR จาก URL เดียวกัน</p>
-    <a class="btn" href="/checkin">เปิดหน้า Check-in (ทดสอบ)</a>
+    <p class="eyebrow">Event check-in</p>
+    <h1>QR ลงทะเบียนหน้างาน</h1>
+    <p class="lead">ผู้เข้างานสแกน QR นี้ <strong>ครั้งเดียว</strong> เพื่อเข้าหน้ายืนยันตัวตนและลงทะเบียนเข้างาน</p>
+    <div class="qr-wrap"><img src="${htmlAttr(qrImgSrc)}" width="420" height="420" alt="QR ลงทะเบียน" /></div>
+    <p class="muted" style="text-align:center;margin-top:8px"><strong>ลิงก์ใน QR</strong><br /><code>${htmlAttr(checkinUrl)}</code></p>
+    <div class="divider"></div>
+    <div class="actions">
+      <a class="btn btn-secondary" href="/checkin">เปิดหน้าลงทะเบียน (ทดสอบ)</a>
+    </div>
+    <p class="fineprint">พิมพ์หน้านี้หรือบันทึกภาพ QR ไปใส่โปสเตอร์ · โดเมนจริงควรเป็น HTTPS ตามที่ตั้งบนเซิร์ฟเวอร์</p>
   `;
-  res.send(htmlPage("MALI — QR Check-in", body));
+  res.send(htmlPage("MALI — QR ลงทะเบียน", body));
 });
 
 app.get("/checkin", (req, res) => {
@@ -276,13 +433,16 @@ app.get("/checkin", (req, res) => {
   });
 
   const body = `
-    <h2>MALI Event Check-in</h2>
-    <p>สแกนครั้งเดียวและเลือกวิธีล็อกอินเพื่อลงทะเบียนเข้างาน</p>
-    <a class="btn primary" href="${lineAuthUrl}">Continue with LINE</a>
-    <a class="btn" href="${googleAuthUrl}">Continue with Google</a>
-    <p class="muted">Flow นี้รองรับแพ็กเกจ B (LINE + Google)</p>
+    <p class="eyebrow">Event registration</p>
+    <h1>ลงทะเบียนเข้างาน</h1>
+    <p class="lead">สแกน QR จากหน้างานแล้วเลือกช่องทางยืนยันตัวตนเพื่อบันทึกการเข้าร่วม</p>
+    <div class="actions">
+      <a class="btn btn-line" href="${htmlAttr(lineAuthUrl)}">เข้าสู่ระบบด้วย LINE</a>
+      <a class="btn btn-google" href="${htmlAttr(googleAuthUrl)}">เข้าสู่ระบบด้วย Google</a>
+    </div>
+    <p class="fineprint">แพ็กเกจ B · รองรับ LINE และ Google · ข้อมูลจะถูกบันทึกตามนโยบายงาน</p>
   `;
-  res.send(htmlPage("MALI Check-in", body));
+  res.send(htmlPage("MALI — ลงทะเบียนเข้างาน", body));
 });
 
 app.get("/auth/line/callback", async (req, res) => {
@@ -297,7 +457,7 @@ app.get("/auth/line/callback", async (req, res) => {
           "ลิงก์ล็อกอินเก่า",
           `<p>ลิงก์นี้มาจากเซสชันเก่าก่อนอัปเดตระบบ หรือแท็บ LINE ยังเปิดลิงก์เดิมอยู่</p>
              <p><strong>ทำแบบนี้:</strong> ปิดแท็บ LINE / ปิด in-app browser แล้วเปิดใหม่</p>
-             <a class="btn primary" href="/checkin">ไปหน้า Check-in แล้วกด LINE ใหม่</a>
+             <a class="btn btn-line" href="/checkin">ไปหน้า Check-in แล้วกด LINE ใหม่</a>
              <p class="muted">อย่ารีเฟรช URL ที่มี <code>callback</code> โดยตรง</p>`,
         ),
       );
@@ -307,7 +467,7 @@ app.get("/auth/line/callback", async (req, res) => {
         htmlPage(
           "LINE state ไม่ถูกต้อง",
           `<p>เปิดจาก <code>/checkin</code> แล้วกดปุ่ม LINE ใหม่เท่านั้น (อย่า bookmark URL callback)</p>
-           <a class="btn primary" href="/checkin">กลับไป Check-in</a>`,
+           <a class="btn btn-line" href="/checkin">กลับไป Check-in</a>`,
         ),
       );
     }
@@ -350,13 +510,20 @@ app.get("/auth/line/callback", async (req, res) => {
     await appendToSheet(row);
 
     const body = `
-      <h2>ลงทะเบียนสำเร็จ</h2>
-      <p>เข้าสู่งานเรียบร้อยแล้ว</p>
+      <div class="success-icon" aria-hidden="true">✓</div>
+      <div class="success-title">
+        <h1>ลงทะเบียนสำเร็จ</h1>
+        <p class="lead" style="margin-bottom:0">เข้าสู่งานเรียบร้อยแล้ว</p>
+      </div>
+      <div class="divider"></div>
+      <p class="eyebrow" style="margin-bottom:10px">ขั้นตอนถัดไป</p>
       ${addOaSectionHtml()}
-      <p class="muted">สำหรับเส้นทาง LINE อาจถูกขอให้ยืนยัน Add OA ในขั้นตอน OAuth แล้ว</p>
-      <p class="muted">เจ้าหน้าที่: กรุณาตรวจหน้าจอนี้ยืนยันการลงทะเบียน</p>
+      <div class="note-box" style="margin-top:20px">
+        <strong>สำหรับเจ้าหน้าที่หน้างาน</strong> โปรดตรวจสอบหน้าจอนี้เพื่อยืนยันว่าผู้เข้าร่วมลงทะเบียนแล้ว<br /><br />
+        หากล็อกอินด้วย LINE ระบบอาจได้ขอให้เพิ่มเพื่อน OA ในขั้นตอนก่อนหน้าแล้ว
+      </div>
     `;
-    res.send(htmlPage("Check-in success", body));
+    res.send(htmlPage("MALI — ลงทะเบียนสำเร็จ", body));
   } catch (error) {
     const lineBody =
       error.response?.data != null ? JSON.stringify(error.response.data) : "";
@@ -389,7 +556,7 @@ app.get("/auth/google/callback", async (req, res) => {
         htmlPage(
           "ลิงก์ล็อกอินเก่า",
           `<p>ลิงก์นี้มาจากเซสชันเก่า</p>
-           <a class="btn primary" href="/checkin">ไปหน้า Check-in แล้วกด Google ใหม่</a>`,
+           <a class="btn btn-line" href="/checkin">ไปหน้า Check-in แล้วกด Google ใหม่</a>`,
         ),
       );
     }
@@ -398,7 +565,7 @@ app.get("/auth/google/callback", async (req, res) => {
         htmlPage(
           "Google state ไม่ถูกต้อง",
           `<p>เปิดจาก <code>/checkin</code> แล้วกดปุ่ม Google ใหม่</p>
-           <a class="btn primary" href="/checkin">กลับไป Check-in</a>`,
+           <a class="btn btn-line" href="/checkin">กลับไป Check-in</a>`,
         ),
       );
     }
@@ -430,13 +597,20 @@ app.get("/auth/google/callback", async (req, res) => {
     await appendToSheet(row);
 
     const body = `
-      <h2>ลงทะเบียนสำเร็จ</h2>
-      <p>เข้าสู่งานเรียบร้อยแล้ว</p>
+      <div class="success-icon" aria-hidden="true">✓</div>
+      <div class="success-title">
+        <h1>ลงทะเบียนสำเร็จ</h1>
+        <p class="lead" style="margin-bottom:0">เข้าสู่งานเรียบร้อยแล้ว</p>
+      </div>
+      <div class="divider"></div>
+      <p class="eyebrow" style="margin-bottom:10px">ขั้นตอนถัดไป</p>
       ${addOaSectionHtml()}
-      <p class="muted">เส้นทาง Google ต้องกดเพิ่มเพื่อนอย่างน้อย 1 ครั้ง — ใช้ปุ่ม &quot;เปิด LINE&quot; บนมือถือเพื่อไม่ต้องสแกน QR หน้าเว็บ</p>
-      <p class="muted">เจ้าหน้าที่: กรุณาตรวจหน้าจอนี้ยืนยันการลงทะเบียน</p>
+      <div class="note-box" style="margin-top:20px">
+        <strong>สำหรับผู้ใช้ Google</strong> กรุณากดเพิ่มเพื่อน LINE Official อย่างน้อยหนึ่งครั้ง — บนมือถือแนะนำใช้ปุ่มสีเขียวเพื่อเปิดแอปโดยตรง<br /><br />
+        <strong>สำหรับเจ้าหน้าที่หน้างาน</strong> โปรดตรวจสอบหน้าจอนี้เพื่อยืนยันการลงทะเบียน
+      </div>
     `;
-    res.send(htmlPage("Check-in success", body));
+    res.send(htmlPage("MALI — ลงทะเบียนสำเร็จ", body));
   } catch (error) {
     res.status(500).send(`Google callback error: ${error.message}`);
   }
