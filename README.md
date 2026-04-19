@@ -40,6 +40,8 @@ Create these headers in row 1:
 
 Also share the sheet with service account email as Editor.
 
+**Timestamp column:** values are written as **local wall time** (default **Asia/Bangkok**), not raw UTC `Z` time. Set `SHEET_TIMEZONE` (IANA) if you need another region or `UTC` for strict UTC strings.
+
 ## 3) Run
 
 ```bash
@@ -81,6 +83,7 @@ Open:
 | `GOOGLE_REDIRECT_URI`                                                               | `https://<host>/auth/google/callback`                                                                                                              |
 | `GOOGLE_SERVICE_ACCOUNT_JSON`                                                       | วาง **เนื้อหาไฟล์ JSON ทั้งก้อน** (บรรทัดเดียวหรือ escape ตามที่ Render รับ)                                                                       |
 | `GOOGLE_SHEET_ID` / `GOOGLE_SHEET_TAB`                                              | ตามชีตจริง                                                                                                                                         |
+| `SHEET_TIMEZONE` (ไม่บังคับ)                                                        | เขตเวลาคอลัมน์เวลาใน Sheet (ค่าเริ่ม `Asia/Bangkok`) — เดิมเป็น UTC เลยดูไม่ตรงเวลาไทย                                                             |
 | ค่าอื่นใน `.env` ที่ใช้ local                                                       | คัดลอกมาใส่ให้ครบ                                                                                                                                  |
 
 4. **LINE Developers** → LINE Login channel → Callback URL เพิ่ม  

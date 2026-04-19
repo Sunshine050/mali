@@ -261,6 +261,30 @@ async function pushLineOaCardImageAfterCheckin(lineUserId) {
   }
 }
 
+/**
+ * Wall-clock time for column A (avoids UTC-only `toISOString()` confusing local staff).
+ * `SHEET_TIMEZONE`: IANA name, e.g. Asia/Bangkok, Asia/Singapore, UTC.
+ */
+function formatTimestampForSheet(d = new Date()) {
+  const tz =
+    (process.env.SHEET_TIMEZONE || "Asia/Bangkok").trim() || "Asia/Bangkok";
+  try {
+    const wall = new Intl.DateTimeFormat("sv-SE", {
+      timeZone: tz,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hourCycle: "h23",
+    }).format(d);
+    return `${wall} (${tz})`;
+  } catch {
+    return d.toISOString();
+  }
+}
+
 async function appendToSheet(row) {
   const auth = getGoogleSheetsAuth();
   const sheets = google.sheets({ version: "v4", auth });
@@ -627,7 +651,7 @@ app.get("/auth/line/callback", async (req, res) => {
     const displayName = profileResp.data.displayName || "";
 
     const row = [
-      new Date().toISOString(),
+      formatTimestampForSheet(),
       EVENT_ID,
       "LINE",
       normalizeProviderUserId(lineUserId),
@@ -714,7 +738,7 @@ app.get("/auth/google/callback", async (req, res) => {
 
     const providerId = me.data.id || me.data.email || "google-unknown";
     const row = [
-      new Date().toISOString(),
+      formatTimestampForSheet(),
       EVENT_ID,
       "GOOGLE",
       normalizeProviderUserId(providerId),
