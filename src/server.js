@@ -440,7 +440,7 @@ app.get("/checkin", (req, res) => {
       <a class="btn btn-line" href="${htmlAttr(lineAuthUrl)}">เข้าสู่ระบบด้วย LINE</a>
       <a class="btn btn-google" href="${htmlAttr(googleAuthUrl)}">เข้าสู่ระบบด้วย Google</a>
     </div>
-    <p class="fineprint">แพ็กเกจ B · รองรับ LINE และ Google · ข้อมูลจะถูกบันทึกตามนโยบายงาน</p>
+    
   `;
   res.send(htmlPage("MALI — ลงทะเบียนเข้างาน", body));
 });
