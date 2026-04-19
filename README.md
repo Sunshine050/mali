@@ -74,7 +74,9 @@ Open:
 | `PORT`                                                                              | ไม่ต้องใส่ — Render กำหนดให้                                                                                                                                                      |
 | `LINE_LOGIN_CHANNEL_ID` / `LINE_LOGIN_CHANNEL_SECRET`                               | จาก LINE Login channel                                                                                                                                                            |
 | `LINE_OA_ADD_FRIEND_URL` / `LINE_OA_BASIC_ID`                                       | ตามเดิม                                                                                                                                                                           |
-| `LINE_MESSAGING_CHANNEL_ACCESS_TOKEN` หรือ `LINE_CHANNEL_ACCESS_TOKEN` (ถ้าต้องการ) | Channel access token ของ **Messaging API** (OA เดียวกับลิงก์เพิ่มเพื่อน) — ใส่แล้วหลังล็อกอิน LINE สำเร็จระบบจะ **push ข้อความ + การ์ด** เข้าแชททุกครั้ง (รวมผู้ที่แอดเพื่อนแล้ว) |
+| `LINE_MESSAGING_CHANNEL_ACCESS_TOKEN` หรือ `LINE_CHANNEL_ACCESS_TOKEN` (ถ้าต้องการ) | Messaging API (OA เดียวกับลิงก์เพิ่มเพื่อน) — ใส่แล้วหลังล็อกอิน LINE สำเร็จจะ **push รูปซ้ำ** ถ้ามี `LINE_OA_CARD_IMAGE_URL` |
+| `LINE_OA_CARD_IMAGE_URL`                                                            | URL รูป **HTTPS สาธารณะ** ชุดเดียวกับรูปใน greeting/การ์ดที่ตั้งใน [LINE OA Manager](https://manager.line.biz/) — **ไม่มี fallback** ไปรูปหน้าเว็บ |
+| `LINE_PUSH_WELCOME_TEXT` (ไม่บังคับ)                                                | ข้อความสั้นๆ ก่อนรูปใน push (บรรทัดใหม่ใช้ `\n` ใน env) — ถ้าว่าง = push เฉพาะรูป |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`                                         | จาก Google Cloud                                                                                                                                                                  |
 | `GOOGLE_REDIRECT_URI`                                                               | `https://<host>/auth/google/callback`                                                                                                                                             |
 | `GOOGLE_SERVICE_ACCOUNT_JSON`                                                       | วาง **เนื้อหาไฟล์ JSON ทั้งก้อน** (บรรทัดเดียวหรือ escape ตามที่ Render รับ)                                                                                                      |
@@ -90,9 +92,7 @@ Open:
 
 **หมายเหตุ:** แพลน `free` อาจหลับหลังไม่มี traffic — เทสเฟสแรกได้ ถ้าต้องการไม่หลับใช้แพลนมีค่า  
 **Webhook:** ไม่จำเป็นสำหรับเฟส “สแกน + ล็อกอิน + เขียน Sheet”  
-**LINE push หลังล็อกอิน:** ถ้าใช้ `LINE_MESSAGING_CHANNEL_ACCESS_TOKEN` หรือ `LINE_CHANNEL_ACCESS_TOKEN` ระบบจะ **push ทุกครั้งหลังล็อกอิน LINE สำเร็จ** เป็น (1) ข้อความต้อนรับ (2) **image message** ตามมาตรฐาน LINE (รูปเดียว ไม่มีปุ่ม/Flex — ชดเชยการที่ OA Manager ทักทายได้แค่ครั้งแรก) — ต้องผูก **LINE Login กับบอท OA (Messaging API)** ให้ `userId` ตรงกัน  
-ถ้าผู้ใช้ยังไม่แอด OA ตอน callback จะ push ไม่ได้ (403 ใน log) — แนะนำให้ flow ล็อกอิน LINE ให้เพิ่นเพื่อนก่อนจบ หรือให้แอดแล้วสแกนเช็คอินรอบถัดไป  
-ปรับข้อความ/รูปด้วย `LINE_PUSH_WELCOME_TEXT`, `LINE_PUSH_CARD_IMAGE_URL` (ดู `.env.example`)
+**LINE หลังล็อกอิน:** ถ้าตั้ง token + `LINE_OA_CARD_IMAGE_URL` ระบบจะ **push รูปซ้ำ** (และข้อความเสริมถ้ามี `LINE_PUSH_WELCOME_TEXT`) — รูปต้องเป็น URL เดียวกับที่ใช้ใน OA Manager **เท่านั้น** ไม่ดึงรูปจากหน้าเว็บแทนการ์ด OA ถ้าไม่ตั้ง URL จะไม่ push รูป (ยังใช้ greeting จาก OA Manager ตามปกติ)
 
 ### Render — ข้อผิดพลาดที่พบบ่อย
 

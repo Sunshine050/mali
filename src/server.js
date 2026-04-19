@@ -25,7 +25,7 @@ function getPublicBaseUrl() {
   const base = explicit || renderUrl;
   if (explicit && renderUrl && explicit !== renderUrl) {
     console.warn(
-      `[mali-checkin] BASE_URL (${explicit}) ≠ RENDER_EXTERNAL_URL (${renderUrl}); ใช้ BASE_URL — ถ้า LINE error ให้แก้ให้ตรงกัน`,
+      `[mali-checkin] BASE_URL (${explicit}) ≠ RENDER_EXTERNAL_URL (${renderUrl}); using BASE_URL — fix mismatch if LINE OAuth fails.`,
     );
   }
   return base;
@@ -35,7 +35,7 @@ function getLineRedirectUri() {
   const base = getPublicBaseUrl();
   if (!base) {
     throw new Error(
-      "ตั้งค่า BASE_URL (https://your-host.onrender.com) หรือให้ Render ตั้ง RENDER_EXTERNAL_URL",
+      "Set BASE_URL (e.g. https://your-host.onrender.com) or rely on RENDER_EXTERNAL_URL on Render.",
     );
   }
   return `${base}/auth/line/callback`;
@@ -59,17 +59,12 @@ const LINE_LOGIN_CHANNEL_SECRET = process.env.LINE_LOGIN_CHANNEL_SECRET;
 const LINE_OA_ADD_FRIEND_URL = process.env.LINE_OA_ADD_FRIEND_URL;
 /** Basic ID เช่น @057xhooz — ใช้สร้างลิงก์ line:// เปิดแอป LINE โดยตรงบนมือถือ */
 const LINE_OA_BASIC_ID_RAW = (process.env.LINE_OA_BASIC_ID || "").trim();
-/** Messaging API (OA เดียวกับที่ให้แอดเพื่อน) — ถ้ามี จะ push ข้อความ + รูป (image) ทุกครั้งหลังล็อกอิน LINE สำเร็จ */
+/** Messaging API — optional repeat push of the OA card image after LINE check-in */
 const LINE_MESSAGING_CHANNEL_ACCESS_TOKEN = (
   process.env.LINE_MESSAGING_CHANNEL_ACCESS_TOKEN ||
   process.env.LINE_CHANNEL_ACCESS_TOKEN ||
   ""
 ).trim();
-
-const DEFAULT_LINE_PUSH_WELCOME =
-  "Welcome to MALI - CANNA SOCIAL HOUSE 🌿\n\n" +
-  "We are thrilled to have you here. Let our experts help you discover your perfect relaxation and the ultimate cannabis experience. " +
-  "If you are interested in any products or need professional guidance, please don't hesitate to ask! ✨";
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
@@ -187,7 +182,7 @@ function htmlAttr(s) {
     .replace(/</g, "&lt;");
 }
 
-/** ปุ่มเพิ่มเพื่อน OA เท่านั้น (ไม่มีกล่องคำแนะ — ใช้คู่กับภาพด้านล่างหน้าสำเร็จ) */
+/** OA add-friend buttons (pairs with success artwork on the web page). */
 function addOaButtonsHtml() {
   const webUrl = LINE_OA_ADD_FRIEND_URL || "";
   const basicId = normalizeLineBasicId(LINE_OA_BASIC_ID_RAW);
@@ -195,12 +190,12 @@ function addOaButtonsHtml() {
   if (lineAppUrl && webUrl) {
     return `
       <div class="actions">
-        <a class="btn btn-line" href="${htmlAttr(lineAppUrl)}">เปิด LINE เพื่อเพิ่มเพื่อน (แนะนำ · มือถือ)</a>
-        <a class="btn btn-secondary" href="${htmlAttr(webUrl)}">เปิดแบบลิงก์เว็บ</a>
+        <a class="btn btn-line" href="${htmlAttr(lineAppUrl)}">Open LINE to add friend (recommended)</a>
+        <a class="btn btn-secondary" href="${htmlAttr(webUrl)}">Open web link</a>
       </div>`;
   }
   if (webUrl) {
-    return `<div class="actions"><a class="btn btn-line" href="${htmlAttr(webUrl)}">เพิ่มเพื่อน LINE Official</a></div>`;
+    return `<div class="actions"><a class="btn btn-line" href="${htmlAttr(webUrl)}">Add LINE Official Account</a></div>`;
   }
   return "";
 }
@@ -212,42 +207,39 @@ function checkinSuccessArtworkHtml() {
   </div>`;
 }
 
-function getLinePushWelcomeText() {
-  const raw = (process.env.LINE_PUSH_WELCOME_TEXT || "").trim();
-  if (raw) {
-    return raw.replace(/\\n/g, "\n");
-  }
-  return DEFAULT_LINE_PUSH_WELCOME;
-}
-
-/** รูปสำหรับ push แบบ image — ถ้าไม่ตั้ง ใช้รูปเดียวกับหน้าเว็บ */
-function getLinePushCardImageUrl() {
-  const c = (process.env.LINE_PUSH_CARD_IMAGE_URL || "").trim();
-  return c || getCheckinSuccessArtworkUrl();
-}
-
 /**
- * หลังล็อกอิน LINE สำเร็จ: push ข้อความต้อนรับ + ข้อความประเภท image (มาตรฐาน LINE ไม่ใช้ Flex)
- * ต้องผูก LINE Login กับ Messaging API และตั้ง token
- * ถ้าผู้ใช้ยังไม่ได้แอด OA จะได้ 403 ใน log
+ * Same HTTPS image as your LINE OA Manager greeting/card hero — no fallback to web artwork.
+ * Set LINE_OA_CARD_IMAGE_URL (or legacy LINE_PUSH_CARD_IMAGE_URL).
  */
-async function pushLineCheckinPrivilegeCard(lineUserId) {
+function getLineOaCardImageUrlForPush() {
+  return (
+    process.env.LINE_OA_CARD_IMAGE_URL ||
+    process.env.LINE_PUSH_CARD_IMAGE_URL ||
+    ""
+  ).trim();
+}
+
+async function pushLineOaCardImageAfterCheckin(lineUserId) {
   if (!LINE_MESSAGING_CHANNEL_ACCESS_TOKEN || !lineUserId) {
     return;
   }
-  const welcome = getLinePushWelcomeText();
-  const imgUrl = getLinePushCardImageUrl();
-  const messages = [
-    {
-      type: "text",
-      text: welcome,
-    },
-    {
-      type: "image",
-      originalContentUrl: imgUrl,
-      previewImageUrl: imgUrl,
-    },
-  ];
+  const imgUrl = getLineOaCardImageUrlForPush();
+  if (!imgUrl) {
+    console.warn(
+      "[mali-checkin] LINE image push skipped: set LINE_OA_CARD_IMAGE_URL to the same public HTTPS image URL used in LINE OA Manager (card/greeting).",
+    );
+    return;
+  }
+  const messages = [];
+  const extraText = (process.env.LINE_PUSH_WELCOME_TEXT || "").trim();
+  if (extraText) {
+    messages.push({ type: "text", text: extraText.replace(/\\n/g, "\n") });
+  }
+  messages.push({
+    type: "image",
+    originalContentUrl: imgUrl,
+    previewImageUrl: imgUrl,
+  });
   const payload = { to: lineUserId, messages };
   try {
     await axios.post("https://api.line.me/v2/bot/message/push", payload, {
@@ -282,7 +274,7 @@ async function appendToSheet(row) {
 
 function htmlPage(title, body) {
   return `<!doctype html>
-<html lang="th">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -475,7 +467,7 @@ function htmlPage(title, body) {
       font-size: 14px;
       border-radius: 11px;
     }
-    /* รูปโปรโมชัน: ไม่ใส่กล่องมืด / ไม่บีบสูง (เลิก letterboxing แถบข้าง) — เต็มความกว้างการ์ด */
+    /* Success artwork: full card width, no dark letterbox */
     .success-artwork-panel {
       margin: 18px -22px -28px;
       padding: 0;
@@ -521,17 +513,17 @@ app.get("/poster", (req, res) => {
   const qrImgSrc = `https://api.qrserver.com/v1/create-qr-code/?size=420x420&data=${encodeURIComponent(checkinUrl)}`;
   const body = `
     <p class="eyebrow">Event check-in</p>
-    <h1>QR ลงทะเบียนหน้างาน</h1>
-    <p class="lead">ผู้เข้างานสแกน QR นี้ <strong>ครั้งเดียว</strong> เพื่อเข้าหน้ายืนยันตัวตนและลงทะเบียนเข้างาน</p>
-    <div class="qr-wrap"><img src="${htmlAttr(qrImgSrc)}" width="420" height="420" alt="QR ลงทะเบียน" /></div>
-    <p class="muted" style="text-align:center;margin-top:8px"><strong>ลิงก์ใน QR</strong><br /><code>${htmlAttr(checkinUrl)}</code></p>
+    <h1>Staff poster QR</h1>
+    <p class="lead">Guests scan this QR <strong>once</strong> to open sign-in and complete event registration.</p>
+    <div class="qr-wrap"><img src="${htmlAttr(qrImgSrc)}" width="420" height="420" alt="Check-in QR code" /></div>
+    <p class="muted" style="text-align:center;margin-top:8px"><strong>URL in QR</strong><br /><code>${htmlAttr(checkinUrl)}</code></p>
     <div class="divider"></div>
     <div class="actions">
-      <a class="btn btn-secondary" href="/checkin">เปิดหน้าลงทะเบียน (ทดสอบ)</a>
+      <a class="btn btn-secondary" href="/checkin">Open check-in page (test)</a>
     </div>
-    <p class="fineprint">พิมพ์หน้านี้หรือบันทึกภาพ QR ไปใส่โปสเตอร์ · โดเมนจริงควรเป็น HTTPS ตามที่ตั้งบนเซิร์ฟเวอร์</p>
+    <p class="fineprint">Print this page or save the QR for your poster. Production should use HTTPS.</p>
   `;
-  res.send(htmlPage("MALI — QR ลงทะเบียน", body));
+  res.send(htmlPage("MALI — Check-in QR", body));
 });
 
 app.get("/checkin", (req, res) => {
@@ -574,15 +566,14 @@ app.get("/checkin", (req, res) => {
 
   const body = `
     <p class="eyebrow">Event registration</p>
-    <h1>ลงทะเบียนเข้างาน</h1>
-    <p class="lead">สแกน QR จากหน้างานแล้วเลือกช่องทางยืนยันตัวตนเพื่อบันทึกการเข้าร่วม</p>
+    <h1>Check in</h1>
+    <p class="lead">After scanning the event QR, sign in once with LINE or Google so we can record your visit.</p>
     <div class="actions">
-      <a class="btn btn-line" href="${htmlAttr(lineAuthUrl)}">เข้าสู่ระบบด้วย LINE</a>
-      <a class="btn btn-google" href="${htmlAttr(googleAuthUrl)}">เข้าสู่ระบบด้วย Google</a>
+      <a class="btn btn-line" href="${htmlAttr(lineAuthUrl)}">Continue with LINE</a>
+      <a class="btn btn-google" href="${htmlAttr(googleAuthUrl)}">Continue with Google</a>
     </div>
-    
   `;
-  res.send(htmlPage("MALI — ลงทะเบียนเข้างาน", body));
+  res.send(htmlPage("MALI — Event check-in", body));
 });
 
 app.get("/auth/line/callback", async (req, res) => {
@@ -594,20 +585,20 @@ app.get("/auth/line/callback", async (req, res) => {
     if (isLegacyRandomState(state)) {
       return res.status(400).send(
         htmlPage(
-          "ลิงก์ล็อกอินเก่า",
-          `<p>ลิงก์นี้มาจากเซสชันเก่าก่อนอัปเดตระบบ หรือแท็บ LINE ยังเปิดลิงก์เดิมอยู่</p>
-             <p><strong>ทำแบบนี้:</strong> ปิดแท็บ LINE / ปิด in-app browser แล้วเปิดใหม่</p>
-             <a class="btn btn-line" href="/checkin">ไปหน้า Check-in แล้วกด LINE ใหม่</a>
-             <p class="muted">อย่ารีเฟรช URL ที่มี <code>callback</code> โดยตรง</p>`,
+          "Sign-in link expired",
+          `<p>This link is from an old session or an outdated LINE in-app tab.</p>
+             <p><strong>What to do:</strong> Close the LINE tab or in-app browser, then start again from the check-in page.</p>
+             <a class="btn btn-line" href="/checkin">Go to check-in and tap LINE again</a>
+             <p class="muted">Do not refresh a URL that contains <code>callback</code>.</p>`,
         ),
       );
     }
     if (!verifySignedState(state, "line")) {
       return res.status(400).send(
         htmlPage(
-          "LINE state ไม่ถูกต้อง",
-          `<p>เปิดจาก <code>/checkin</code> แล้วกดปุ่ม LINE ใหม่เท่านั้น (อย่า bookmark URL callback)</p>
-           <a class="btn btn-line" href="/checkin">กลับไป Check-in</a>`,
+          "Invalid LINE state",
+          `<p>Open <code>/checkin</code> and tap the LINE button again (do not bookmark the callback URL).</p>
+           <a class="btn btn-line" href="/checkin">Back to check-in</a>`,
         ),
       );
     }
@@ -653,17 +644,17 @@ app.get("/auth/line/callback", async (req, res) => {
       <div class="success-page">
         <div class="success-icon" aria-hidden="true">✓</div>
         <div class="success-title">
-          <h1>ลงทะเบียนสำเร็จ</h1>
-          <p class="lead">เข้าสู่งานเรียบร้อยแล้ว</p>
+          <h1>Registration complete</h1>
+          <p class="lead">You are checked in for this event.</p>
         </div>
         <div class="divider"></div>
-        <p class="eyebrow">ขั้นตอนถัดไป</p>
+        <p class="eyebrow">Next step</p>
         ${addOaButtonsHtml()}
         ${checkinSuccessArtworkHtml()}
       </div>
     `;
-    res.send(htmlPage("MALI — ลงทะเบียนสำเร็จ", body));
-    pushLineCheckinPrivilegeCard(lineUserId);
+    res.send(htmlPage("MALI — Registration complete", body));
+    pushLineOaCardImageAfterCheckin(lineUserId);
   } catch (error) {
     const lineBody =
       error.response?.data != null ? JSON.stringify(error.response.data) : "";
@@ -671,11 +662,11 @@ app.get("/auth/line/callback", async (req, res) => {
     try {
       lineRedirectHint = getLineRedirectUri();
     } catch {
-      lineRedirectHint = "(ตั้ง BASE_URL)";
+      lineRedirectHint = "(set BASE_URL)";
     }
     const hint =
       error.response?.status === 400
-        ? ` มักเกิดจาก: (1) redirect_uri ไม่ตรง — ใน LINE Developers ต้องมี URL เดียวกับ ${lineRedirectHint} (2) รีเฟรชหน้า callback / โค้ดใช้ซ้ำ — เริ่มใหม่จาก /checkin (3) Channel secret ไม่ใช่ของ LINE Login channel`
+        ? ` Common causes: (1) redirect_uri mismatch — register exactly ${lineRedirectHint} in LINE Developers (2) refreshed callback or reused code — start again from /checkin (3) wrong channel secret (must be LINE Login channel secret)`
         : "";
     res
       .status(500)
@@ -694,18 +685,18 @@ app.get("/auth/google/callback", async (req, res) => {
     if (isLegacyRandomState(state)) {
       return res.status(400).send(
         htmlPage(
-          "ลิงก์ล็อกอินเก่า",
-          `<p>ลิงก์นี้มาจากเซสชันเก่า</p>
-           <a class="btn btn-line" href="/checkin">ไปหน้า Check-in แล้วกด Google ใหม่</a>`,
+          "Sign-in link expired",
+          `<p>This link is from an old session.</p>
+           <a class="btn btn-line" href="/checkin">Go to check-in and use Google again</a>`,
         ),
       );
     }
     if (!verifySignedState(state, "google")) {
       return res.status(400).send(
         htmlPage(
-          "Google state ไม่ถูกต้อง",
-          `<p>เปิดจาก <code>/checkin</code> แล้วกดปุ่ม Google ใหม่</p>
-           <a class="btn btn-line" href="/checkin">กลับไป Check-in</a>`,
+          "Invalid Google state",
+          `<p>Open <code>/checkin</code> and tap the Google button again.</p>
+           <a class="btn btn-line" href="/checkin">Back to check-in</a>`,
         ),
       );
     }
@@ -740,16 +731,16 @@ app.get("/auth/google/callback", async (req, res) => {
       <div class="success-page">
         <div class="success-icon" aria-hidden="true">✓</div>
         <div class="success-title">
-          <h1>ลงทะเบียนสำเร็จ</h1>
-          <p class="lead">เข้าสู่งานเรียบร้อยแล้ว</p>
+          <h1>Registration complete</h1>
+          <p class="lead">You are checked in for this event.</p>
         </div>
         <div class="divider"></div>
-        <p class="eyebrow">ขั้นตอนถัดไป</p>
+        <p class="eyebrow">Next step</p>
         ${addOaButtonsHtml()}
         ${checkinSuccessArtworkHtml()}
       </div>
     `;
-    res.send(htmlPage("MALI — ลงทะเบียนสำเร็จ", body));
+    res.send(htmlPage("MALI — Registration complete", body));
   } catch (error) {
     res.status(500).send(`Google callback error: ${error.message}`);
   }
@@ -779,7 +770,7 @@ app.listen(PORT, () => {
   );
   try {
     console.log(
-      `LINE OAuth redirect_uri (ลงทะเบียนใน LINE Developers ให้ตรง): ${getLineRedirectUri()}`,
+      `LINE OAuth redirect_uri (register this URL in LINE Developers): ${getLineRedirectUri()}`,
     );
   } catch (e) {
     console.warn(String(e.message || e));
