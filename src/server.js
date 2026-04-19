@@ -1,4 +1,5 @@
 const express = require("express");
+const path = require("path");
 const dotenv = require("dotenv");
 const crypto = require("crypto");
 const axios = require("axios");
@@ -8,6 +9,7 @@ const { getGoogleSheetsAuth } = require("./googleSheetsAuth");
 dotenv.config();
 
 const app = express();
+app.use(express.static(path.join(__dirname, "..", "public")));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
@@ -37,6 +39,19 @@ function getLineRedirectUri() {
     );
   }
   return `${base}/auth/line/callback`;
+}
+
+/** ภาพด้านล่างหน้าสำเร็จ — ตั้ง URL เต็มได้ถ้าโฮสต์ที่อื่น */
+function getCheckinSuccessArtworkUrl() {
+  const custom = (process.env.CHECKIN_SUCCESS_ARTWORK_URL || "").trim();
+  if (custom) {
+    return custom;
+  }
+  const base = getPublicBaseUrl();
+  if (!base) {
+    return "/checkin-success-artwork.png";
+  }
+  return `${base.replace(/\/+$/, "")}/checkin-success-artwork.png`;
 }
 
 const LINE_LOGIN_CHANNEL_ID = process.env.LINE_LOGIN_CHANNEL_ID;
@@ -161,27 +176,29 @@ function htmlAttr(s) {
     .replace(/</g, "&lt;");
 }
 
-/** ปุ่มเพิ่มเพื่อน: มือถือใช้ line:// เปิดแอปได้โดยไม่ต้องสแกน QR หน้าเว็บบน PC */
-function addOaSectionHtml() {
+/** ปุ่มเพิ่มเพื่อน OA เท่านั้น (ไม่มีกล่องคำแนะ — ใช้คู่กับภาพด้านล่างหน้าสำเร็จ) */
+function addOaButtonsHtml() {
   const webUrl = LINE_OA_ADD_FRIEND_URL || "";
   const basicId = normalizeLineBasicId(LINE_OA_BASIC_ID_RAW);
   const lineAppUrl = basicId ? `line://ti/p/${basicId}` : "";
-  let buttons = "";
   if (lineAppUrl && webUrl) {
-    buttons = `
+    return `
       <div class="actions">
         <a class="btn btn-line" href="${htmlAttr(lineAppUrl)}">เปิด LINE เพื่อเพิ่มเพื่อน (แนะนำ · มือถือ)</a>
         <a class="btn btn-secondary" href="${htmlAttr(webUrl)}">เปิดแบบลิงก์เว็บ</a>
       </div>`;
-  } else if (webUrl) {
-    buttons = `<div class="actions"><a class="btn btn-line" href="${htmlAttr(webUrl)}">เพิ่มเพื่อน LINE Official</a></div>`;
   }
-  return `${buttons}
-      <div class="note-box">
-        <strong>สำหรับผู้ใช้มือถือ</strong> กดปุ่มเขียวเพื่อเปิดแอป LINE โดยตรง ไม่ต้องสแกน QR บนหน้าเว็บอีกครั้ง<br /><br />
-        <strong>สำหรับคอมพิวเตอร์</strong> LINE อาจแสดงหน้าให้สแกน QR — เป็นรูปแบบมาตรฐานของ LINE<br /><br />
-        หากล็อกอินด้วย LINE แล้วระบบให้ Add OA ในขั้นตอนก่อนหน้า อาจไม่ต้องกดซ้ำ
-      </div>`;
+  if (webUrl) {
+    return `<div class="actions"><a class="btn btn-line" href="${htmlAttr(webUrl)}">เพิ่มเพื่อน LINE Official</a></div>`;
+  }
+  return "";
+}
+
+function checkinSuccessArtworkHtml() {
+  const url = htmlAttr(getCheckinSuccessArtworkUrl());
+  return `<div class="success-artwork-wrap">
+    <img class="success-artwork" src="${url}" alt="CLAIM YOUR PRIVILEGE — MALI" loading="lazy" decoding="async" />
+  </div>`;
 }
 
 async function appendToSheet(row) {
@@ -354,6 +371,18 @@ function htmlPage(title, body) {
       border: 1px solid var(--border);
       box-shadow: var(--shadow);
     }
+    .success-artwork-wrap {
+      margin: 20px -22px 0;
+      text-align: center;
+    }
+    .success-artwork {
+      display: block;
+      width: 100%;
+      max-width: 100%;
+      height: auto;
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+    }
   </style>
 </head>
 <body>
@@ -517,11 +546,8 @@ app.get("/auth/line/callback", async (req, res) => {
       </div>
       <div class="divider"></div>
       <p class="eyebrow" style="margin-bottom:10px">ขั้นตอนถัดไป</p>
-      ${addOaSectionHtml()}
-      <div class="note-box" style="margin-top:20px">
-        <strong>สำหรับเจ้าหน้าที่หน้างาน</strong> โปรดตรวจสอบหน้าจอนี้เพื่อยืนยันว่าผู้เข้าร่วมลงทะเบียนแล้ว<br /><br />
-        หากล็อกอินด้วย LINE ระบบอาจได้ขอให้เพิ่มเพื่อน OA ในขั้นตอนก่อนหน้าแล้ว
-      </div>
+      ${addOaButtonsHtml()}
+      ${checkinSuccessArtworkHtml()}
     `;
     res.send(htmlPage("MALI — ลงทะเบียนสำเร็จ", body));
   } catch (error) {
@@ -604,11 +630,8 @@ app.get("/auth/google/callback", async (req, res) => {
       </div>
       <div class="divider"></div>
       <p class="eyebrow" style="margin-bottom:10px">ขั้นตอนถัดไป</p>
-      ${addOaSectionHtml()}
-      <div class="note-box" style="margin-top:20px">
-        <strong>สำหรับผู้ใช้ Google</strong> กรุณากดเพิ่มเพื่อน LINE Official อย่างน้อยหนึ่งครั้ง — บนมือถือแนะนำใช้ปุ่มสีเขียวเพื่อเปิดแอปโดยตรง<br /><br />
-        <strong>สำหรับเจ้าหน้าที่หน้างาน</strong> โปรดตรวจสอบหน้าจอนี้เพื่อยืนยันการลงทะเบียน
-      </div>
+      ${addOaButtonsHtml()}
+      ${checkinSuccessArtworkHtml()}
     `;
     res.send(htmlPage("MALI — ลงทะเบียนสำเร็จ", body));
   } catch (error) {
