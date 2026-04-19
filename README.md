@@ -99,8 +99,21 @@ Open:
 
 ## 6) Keep Alive for Render Free
 
-- มี endpoint เบาๆ ที่ `GET /warmup`
+- มี endpoint เบาๆ ที่ `GET /warmup` (หรือใช้ `GET /health` ก็ได้)
 - มี GitHub Actions workflow ที่ `.github/workflows/keep-render-awake.yml`
 - workflow จะ ping `https://mali-2upq.onrender.com/warmup` ทุก 5 นาที และกดรันเองได้จากแท็บ Actions
 - หลัง push ขึ้น GitHub ให้เข้า repo -> `Actions` -> เปิดใช้งาน workflow ถ้าระบบถาม
 - วิธีนี้ช่วยลดโอกาส cold start แต่ไม่ได้การันตี 100% เท่ากับอัปเกรดเป็น Starter plan
+
+### UptimeRobot (ทางเลือก — ไม่ต้องพึ่ง GitHub Actions)
+
+1. สมัคร/ล็อกอินที่ [UptimeRobot](https://uptimerobot.com/)
+2. **Add New Monitor**
+3. **Monitor Type:** `HTTP(s)`
+4. **Friendly Name:** ตั้งชื่ออะไรก็ได้ (เช่น `MALI Render warmup`)
+5. **URL:** `https://<ชื่อ-service-ของคุณ>.onrender.com/warmup`  
+   แทน `<ชื่อ-service-ของคุณ>` ด้วยโดเมนจริงจาก Render (เช่น `https://mali-2upq.onrender.com/warmup`)
+6. **Monitoring Interval:** ตั้ง **5 นาที** (หรือถี่กว่านั้นถ้าแพลนรองรับ) — Render Free หลับหลังไม่มี traffic ~15 นาที การ ping ทุก 5 นาทีจะช่วยให้ instance ตื่นอยู่บ่อยครั้ง
+7. บันทึก — รอ request แรกผ่าน (ครั้งแรกอาจยังเห็นหน้า spin-up ของ Render จนกว่า service จะตื่น)
+
+**หมายเหตุ:** ถ้าไม่อยากได้อีเมลแจ้งเตือนตอน service หลับชั่วคราว ให้ปรับ **Alert contacts** หรือ threshold ใน UptimeRobot ตามต้องการ

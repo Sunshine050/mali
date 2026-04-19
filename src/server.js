@@ -1,4 +1,5 @@
 const express = require("express");
+const path = require("path");
 const dotenv = require("dotenv");
 const crypto = require("crypto");
 const axios = require("axios");
@@ -8,6 +9,8 @@ const { getGoogleSheetsAuth } = require("./googleSheetsAuth");
 dotenv.config();
 
 const app = express();
+const PUBLIC_DIR = path.join(__dirname, "..", "public");
+app.use(express.static(PUBLIC_DIR));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
@@ -139,6 +142,19 @@ function normalizeProviderUserId(input) {
   return crypto.createHash("sha256").update(input).digest("hex");
 }
 
+/** Hero image after check-in. Override with full URL if the asset is hosted elsewhere (e.g. LINE CDN). */
+function getCheckinSuccessArtworkUrl() {
+  const custom = (process.env.CHECKIN_SUCCESS_ARTWORK_URL || "").trim();
+  if (custom) {
+    return custom;
+  }
+  const base = getPublicBaseUrl();
+  if (!base) {
+    return "/checkin-success-artwork.png";
+  }
+  return `${base.replace(/\/+$/, "")}/checkin-success-artwork.png`;
+}
+
 function normalizeLineBasicId(id) {
   if (!id) {
     return "";
@@ -162,26 +178,79 @@ function htmlAttr(s) {
 }
 
 /** ปุ่มเพิ่มเพื่อน: มือถือใช้ line:// เปิดแอปได้โดยไม่ต้องสแกน QR หน้าเว็บบน PC */
-function addOaSectionHtml() {
+function addOaSectionHtml(locale = "th") {
   const webUrl = LINE_OA_ADD_FRIEND_URL || "";
   const basicId = normalizeLineBasicId(LINE_OA_BASIC_ID_RAW);
   const lineAppUrl = basicId ? `line://ti/p/${basicId}` : "";
+  const copy =
+    locale === "en"
+      ? {
+          btnBoth1: "Open LINE to add friend (recommended · mobile)",
+          btnBoth2: "Open web link",
+          btnWeb: "Add LINE Official Account",
+          note:
+            "<strong>Mobile:</strong> Tap the green button to open the LINE app—no extra QR on this page.<br /><br />" +
+            "<strong>Desktop:</strong> LINE may ask you to scan a QR; that is normal.<br /><br />" +
+            "If LINE Login already prompted you to add the Official Account, you may not need to tap again.",
+        }
+      : {
+          btnBoth1: "เปิด LINE เพื่อเพิ่มเพื่อน (แนะนำ · มือถือ)",
+          btnBoth2: "เปิดแบบลิงก์เว็บ",
+          btnWeb: "เพิ่มเพื่อน LINE Official",
+          note:
+            "<strong>สำหรับผู้ใช้มือถือ</strong> กดปุ่มเขียวเพื่อเปิดแอป LINE โดยตรง ไม่ต้องสแกน QR บนหน้าเว็บอีกครั้ง<br /><br />" +
+            "<strong>สำหรับคอมพิวเตอร์</strong> LINE อาจแสดงหน้าให้สแกน QR — เป็นรูปแบบมาตรฐานของ LINE<br /><br />" +
+            "หากล็อกอินด้วย LINE แล้วระบบให้ Add OA ในขั้นตอนก่อนหน้า อาจไม่ต้องกดซ้ำ",
+        };
   let buttons = "";
   if (lineAppUrl && webUrl) {
     buttons = `
       <div class="actions">
-        <a class="btn btn-line" href="${htmlAttr(lineAppUrl)}">เปิด LINE เพื่อเพิ่มเพื่อน (แนะนำ · มือถือ)</a>
-        <a class="btn btn-secondary" href="${htmlAttr(webUrl)}">เปิดแบบลิงก์เว็บ</a>
+        <a class="btn btn-line" href="${htmlAttr(lineAppUrl)}">${copy.btnBoth1}</a>
+        <a class="btn btn-secondary" href="${htmlAttr(webUrl)}">${copy.btnBoth2}</a>
       </div>`;
   } else if (webUrl) {
-    buttons = `<div class="actions"><a class="btn btn-line" href="${htmlAttr(webUrl)}">เพิ่มเพื่อน LINE Official</a></div>`;
+    buttons = `<div class="actions"><a class="btn btn-line" href="${htmlAttr(webUrl)}">${copy.btnWeb}</a></div>`;
   }
   return `${buttons}
       <div class="note-box">
-        <strong>สำหรับผู้ใช้มือถือ</strong> กดปุ่มเขียวเพื่อเปิดแอป LINE โดยตรง ไม่ต้องสแกน QR บนหน้าเว็บอีกครั้ง<br /><br />
-        <strong>สำหรับคอมพิวเตอร์</strong> LINE อาจแสดงหน้าให้สแกน QR — เป็นรูปแบบมาตรฐานของ LINE<br /><br />
-        หากล็อกอินด้วย LINE แล้วระบบให้ Add OA ในขั้นตอนก่อนหน้า อาจไม่ต้องกดซ้ำ
+        ${copy.note}
       </div>`;
+}
+
+function lineCheckinSuccessBody() {
+  const artUrl = htmlAttr(getCheckinSuccessArtworkUrl());
+  return `
+    <div class="success-hero-wrap">
+      <div class="success-icon" aria-hidden="true">✓</div>
+      <img class="success-artwork" src="${artUrl}" alt="Claim your privilege — MALI" loading="eager" fetchpriority="high" />
+    </div>
+    <div class="success-title success-title--tight">
+      <h1>Registration complete</h1>
+      <p class="lead">You are checked in. Welcome to the event.</p>
+    </div>
+    <p class="fineprint fineprint--tight">House of MALI · event check-in</p>
+  `;
+}
+
+function googleCheckinSuccessBody() {
+  const artUrl = htmlAttr(getCheckinSuccessArtworkUrl());
+  return `
+    <div class="success-hero-wrap">
+      <div class="success-icon" aria-hidden="true">✓</div>
+      <img class="success-artwork" src="${artUrl}" alt="Claim your privilege — MALI" loading="eager" fetchpriority="high" />
+    </div>
+    <div class="success-title success-title--tight">
+      <h1>Registration complete</h1>
+      <p class="lead">You are checked in. Add our LINE Official Account below if you have not already.</p>
+    </div>
+    <div class="divider"></div>
+    <p class="eyebrow" style="margin-bottom:10px">Next step</p>
+    ${addOaSectionHtml("en")}
+    <div class="note-box" style="margin-top:20px">
+      <strong>For event staff:</strong> Please confirm this screen shows a successful registration.
+    </div>
+  `;
 }
 
 async function appendToSheet(row) {
@@ -195,9 +264,10 @@ async function appendToSheet(row) {
   });
 }
 
-function htmlPage(title, body) {
+function htmlPage(title, body, pageOpts = {}) {
+  const lang = pageOpts.lang || "th";
   return `<!doctype html>
-<html lang="th">
+<html lang="${htmlAttr(lang)}">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -354,6 +424,29 @@ function htmlPage(title, body) {
       border: 1px solid var(--border);
       box-shadow: var(--shadow);
     }
+    .success-hero-wrap {
+      margin: -28px -22px 0;
+      text-align: center;
+    }
+    .success-artwork {
+      display: block;
+      width: 100%;
+      height: auto;
+      border-radius: 0 0 14px 14px;
+    }
+    .success-title--tight {
+      margin-top: 18px;
+    }
+    .success-title--tight h1 {
+      margin-bottom: 8px;
+    }
+    .success-title--tight .lead {
+      margin-bottom: 0;
+    }
+    .fineprint--tight {
+      margin-top: 14px;
+      margin-bottom: 0;
+    }
   </style>
 </head>
 <body>
@@ -509,21 +602,8 @@ app.get("/auth/line/callback", async (req, res) => {
     ];
     await appendToSheet(row);
 
-    const body = `
-      <div class="success-icon" aria-hidden="true">✓</div>
-      <div class="success-title">
-        <h1>ลงทะเบียนสำเร็จ</h1>
-        <p class="lead" style="margin-bottom:0">เข้าสู่งานเรียบร้อยแล้ว</p>
-      </div>
-      <div class="divider"></div>
-      <p class="eyebrow" style="margin-bottom:10px">ขั้นตอนถัดไป</p>
-      ${addOaSectionHtml()}
-      <div class="note-box" style="margin-top:20px">
-        <strong>สำหรับเจ้าหน้าที่หน้างาน</strong> โปรดตรวจสอบหน้าจอนี้เพื่อยืนยันว่าผู้เข้าร่วมลงทะเบียนแล้ว<br /><br />
-        หากล็อกอินด้วย LINE ระบบอาจได้ขอให้เพิ่มเพื่อน OA ในขั้นตอนก่อนหน้าแล้ว
-      </div>
-    `;
-    res.send(htmlPage("MALI — ลงทะเบียนสำเร็จ", body));
+    const body = lineCheckinSuccessBody();
+    res.send(htmlPage("MALI — Registration complete", body, { lang: "en" }));
   } catch (error) {
     const lineBody =
       error.response?.data != null ? JSON.stringify(error.response.data) : "";
@@ -596,21 +676,8 @@ app.get("/auth/google/callback", async (req, res) => {
     ];
     await appendToSheet(row);
 
-    const body = `
-      <div class="success-icon" aria-hidden="true">✓</div>
-      <div class="success-title">
-        <h1>ลงทะเบียนสำเร็จ</h1>
-        <p class="lead" style="margin-bottom:0">เข้าสู่งานเรียบร้อยแล้ว</p>
-      </div>
-      <div class="divider"></div>
-      <p class="eyebrow" style="margin-bottom:10px">ขั้นตอนถัดไป</p>
-      ${addOaSectionHtml()}
-      <div class="note-box" style="margin-top:20px">
-        <strong>สำหรับผู้ใช้ Google</strong> กรุณากดเพิ่มเพื่อน LINE Official อย่างน้อยหนึ่งครั้ง — บนมือถือแนะนำใช้ปุ่มสีเขียวเพื่อเปิดแอปโดยตรง<br /><br />
-        <strong>สำหรับเจ้าหน้าที่หน้างาน</strong> โปรดตรวจสอบหน้าจอนี้เพื่อยืนยันการลงทะเบียน
-      </div>
-    `;
-    res.send(htmlPage("MALI — ลงทะเบียนสำเร็จ", body));
+    const body = googleCheckinSuccessBody();
+    res.send(htmlPage("MALI — Registration complete", body, { lang: "en" }));
   } catch (error) {
     res.status(500).send(`Google callback error: ${error.message}`);
   }
