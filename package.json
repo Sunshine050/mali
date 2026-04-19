@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
-    "setup:sheet": "node scripts/setup-google-sheet.js"
+    "setup:sheet": "node scripts/setup-google-sheet.js",
+    "sheet:readable": "node scripts/apply-readable-time-column.js"
   },
   "engines": {
     "node": ">=18"

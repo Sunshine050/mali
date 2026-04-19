@@ -40,7 +40,7 @@ Create these headers in row 1:
 
 Also share the sheet with service account email as Editor.
 
-**Timestamp column:** values are written as **local wall time** (default **Asia/Bangkok**), not raw UTC `Z` time. Set `SHEET_TIMEZONE` (IANA) if you need another region or `UTC` for strict UTC strings.
+**Timestamp column:** values are written as **readable local wall time** (default **Asia/Bangkok**, locale **en-GB**), not raw UTC `...Z`. Override with `SHEET_TIMEZONE` / `SHEET_TIMESTAMP_LOCALE`.
 
 ## 3) Run
 
@@ -83,7 +83,8 @@ Open:
 | `GOOGLE_REDIRECT_URI`                                                               | `https://<host>/auth/google/callback`                                                                                                              |
 | `GOOGLE_SERVICE_ACCOUNT_JSON`                                                       | วาง **เนื้อหาไฟล์ JSON ทั้งก้อน** (บรรทัดเดียวหรือ escape ตามที่ Render รับ)                                                                       |
 | `GOOGLE_SHEET_ID` / `GOOGLE_SHEET_TAB`                                              | ตามชีตจริง                                                                                                                                         |
-| `SHEET_TIMEZONE` (ไม่บังคับ)                                                        | เขตเวลาคอลัมน์เวลาใน Sheet (ค่าเริ่ม `Asia/Bangkok`) — เดิมเป็น UTC เลยดูไม่ตรงเวลาไทย                                                             |
+| `SHEET_TIMEZONE` (ไม่บังคับ)                                                        | เขตเวลาในคอลัมน์เวลา (ค่าเริ่ม `Asia/Bangkok`)                                                                                                      |
+| `SHEET_TIMESTAMP_LOCALE` (ไม่บังคับ)                                                | รูปแบบการอ่านวันที่ เช่น `en-GB` (ค่าเริ่ม) หรือ `th-TH`                                                                                            |
 | ค่าอื่นใน `.env` ที่ใช้ local                                                       | คัดลอกมาใส่ให้ครบ                                                                                                                                  |
 
 4. **LINE Developers** → LINE Login channel → Callback URL เพิ่ม  

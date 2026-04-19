@@ -262,18 +262,20 @@ async function pushLineOaCardImageAfterCheckin(lineUserId) {
 }
 
 /**
- * Wall-clock time for column A (avoids UTC-only `toISOString()` confusing local staff).
- * `SHEET_TIMEZONE`: IANA name, e.g. Asia/Bangkok, Asia/Singapore, UTC.
+ * Human-readable wall time for column A (not UTC `...Z` strings).
+ * `SHEET_TIMEZONE`: IANA, e.g. Asia/Bangkok. `SHEET_TIMESTAMP_LOCALE`: BCP 47, e.g. en-GB, th-TH.
  */
 function formatTimestampForSheet(d = new Date()) {
   const tz =
     (process.env.SHEET_TIMEZONE || "Asia/Bangkok").trim() || "Asia/Bangkok";
+  const locale =
+    (process.env.SHEET_TIMESTAMP_LOCALE || "en-GB").trim() || "en-GB";
   try {
-    const wall = new Intl.DateTimeFormat("sv-SE", {
+    const wall = new Intl.DateTimeFormat(locale, {
       timeZone: tz,
       year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
+      month: "short",
+      day: "numeric",
       hour: "2-digit",
       minute: "2-digit",
       second: "2-digit",
