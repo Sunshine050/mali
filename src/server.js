@@ -59,6 +59,17 @@ const LINE_LOGIN_CHANNEL_SECRET = process.env.LINE_LOGIN_CHANNEL_SECRET;
 const LINE_OA_ADD_FRIEND_URL = process.env.LINE_OA_ADD_FRIEND_URL;
 /** Basic ID เช่น @057xhooz — ใช้สร้างลิงก์ line:// เปิดแอป LINE โดยตรงบนมือถือ */
 const LINE_OA_BASIC_ID_RAW = (process.env.LINE_OA_BASIC_ID || "").trim();
+/** Messaging API (OA เดียวกับที่ให้แอดเพื่อน) — ถ้ามี จะ push การ์ดทุกครั้งหลังล็อกอิน LINE สำเร็จ */
+const LINE_MESSAGING_CHANNEL_ACCESS_TOKEN = (
+  process.env.LINE_MESSAGING_CHANNEL_ACCESS_TOKEN ||
+  process.env.LINE_CHANNEL_ACCESS_TOKEN ||
+  ""
+).trim();
+
+const DEFAULT_LINE_PUSH_WELCOME =
+  "Welcome to MALI - CANNA SOCIAL HOUSE 🌿\n\n" +
+  "We are thrilled to have you here. Let our experts help you discover your perfect relaxation and the ultimate cannabis experience. " +
+  "If you are interested in any products or need professional guidance, please don't hesitate to ask! ✨";
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
@@ -196,9 +207,111 @@ function addOaButtonsHtml() {
 
 function checkinSuccessArtworkHtml() {
   const url = htmlAttr(getCheckinSuccessArtworkUrl());
-  return `<div class="success-artwork-wrap">
-    <img class="success-artwork" src="${url}" alt="CLAIM YOUR PRIVILEGE — MALI" loading="lazy" decoding="async" />
+  return `<div class="success-artwork-panel">
+    <img src="${url}" alt="CLAIM YOUR PRIVILEGE — MALI" width="800" height="1200" loading="lazy" decoding="async" />
   </div>`;
+}
+
+function getLinePushWelcomeText() {
+  const raw = (process.env.LINE_PUSH_WELCOME_TEXT || "").trim();
+  if (raw) {
+    return raw.replace(/\\n/g, "\n");
+  }
+  return DEFAULT_LINE_PUSH_WELCOME;
+}
+
+/** รูปใน Flex การ์ด — ถ้าไม่ตั้ง ใช้รูปเดียวกับหน้าเว็บ */
+function getLinePushCardImageUrl() {
+  const c = (process.env.LINE_PUSH_CARD_IMAGE_URL || "").trim();
+  return c || getCheckinSuccessArtworkUrl();
+}
+
+/** ปุ่ม CLAIM YOUR PRIVILEGE เปิด URL ไหน (LIFF / เว็บ / ลิงก์เพิ่มเพื่อน) */
+function getLinePushPrivilegeButtonUri() {
+  const u = (process.env.LINE_PUSH_PRIVILEGE_BUTTON_URI || "").trim();
+  if (u) {
+    return u;
+  }
+  return (LINE_OA_ADD_FRIEND_URL || "").trim();
+}
+
+function buildLinePrivilegeFlexBubble() {
+  const imgUrl = getLinePushCardImageUrl();
+  const btnUri = getLinePushPrivilegeButtonUri();
+  const bubble = {
+    type: "bubble",
+    size: "kilo",
+    hero: {
+      type: "image",
+      url: imgUrl,
+      size: "full",
+      aspectRatio: "13:20",
+      aspectMode: "fit",
+    },
+  };
+  if (btnUri) {
+    bubble.footer = {
+      type: "box",
+      layout: "vertical",
+      spacing: "sm",
+      contents: [
+        {
+          type: "button",
+          style: "secondary",
+          height: "sm",
+          action: {
+            type: "uri",
+            label: "CLAIM YOUR PRIVILEGE",
+            uri: btnUri,
+          },
+        },
+      ],
+    };
+  }
+  return bubble;
+}
+
+/**
+ * ส่งชุดข้อความเหมือน OA Greeting แต่ทุกครั้งหลังล็อกอิน LINE สำเร็จ (เพื่อนเก่า/ใหม่ที่แอดแล้ว)
+ * 1) ข้อความต้อนรับ 2) Flex การ์ด (รูป + ปุ่ม CLAIM ถ้ามี URL)
+ * ต้องผูก LINE Login กับ Messaging API และตั้ง LINE_MESSAGING_CHANNEL_ACCESS_TOKEN
+ * ถ้าผู้ใช้ยังไม่ได้แอด OA จะได้ 403 — แนะนำให้ล็อกอิน LINE หลังขั้นเพิ่นเพื่อนแล้ว หรือกดเพิ่มเพื่อนแล้วสแกนรอบใหม่
+ */
+async function pushLineCheckinPrivilegeCard(lineUserId) {
+  if (!LINE_MESSAGING_CHANNEL_ACCESS_TOKEN || !lineUserId) {
+    return;
+  }
+  const welcome = getLinePushWelcomeText();
+  const messages = [
+    {
+      type: "text",
+      text: welcome,
+    },
+    {
+      type: "flex",
+      altText: "MALI — Claim your privilege",
+      contents: buildLinePrivilegeFlexBubble(),
+    },
+  ];
+  const payload = { to: lineUserId, messages };
+  try {
+    await axios.post("https://api.line.me/v2/bot/message/push", payload, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${LINE_MESSAGING_CHANNEL_ACCESS_TOKEN}`,
+      },
+      timeout: 15000,
+    });
+  } catch (err) {
+    const status = err.response?.status;
+    const data =
+      err.response?.data != null ? JSON.stringify(err.response.data) : "";
+    console.warn(
+      "[mali-checkin] LINE push message:",
+      status || err.message,
+      data || "",
+    );
+  }
 }
 
 async function appendToSheet(row) {
@@ -251,6 +364,11 @@ function htmlPage(title, body) {
       display: flex;
       flex-direction: column;
       justify-content: center;
+    }
+    .shell:has(.success-page) {
+      justify-content: flex-start;
+      padding-top: max(16px, env(safe-area-inset-top, 0px));
+      padding-bottom: max(20px, env(safe-area-inset-bottom, 0px));
     }
     .brand {
       text-align: center;
@@ -371,17 +489,57 @@ function htmlPage(title, body) {
       border: 1px solid var(--border);
       box-shadow: var(--shadow);
     }
-    .success-artwork-wrap {
-      margin: 20px -22px 0;
-      text-align: center;
+    .success-page .success-icon {
+      width: 46px;
+      height: 46px;
+      font-size: 22px;
+      margin-bottom: 12px;
+      box-shadow: 0 6px 18px rgba(6, 199, 85, 0.28);
     }
-    .success-artwork {
+    .success-page .success-title h1 {
+      font-size: 1.22rem;
+      margin-bottom: 4px;
+    }
+    .success-page .success-title .lead {
+      font-size: 14px;
+      margin-bottom: 0;
+    }
+    .success-page .divider {
+      margin: 14px 0 12px;
+    }
+    .success-page .eyebrow {
+      margin-bottom: 6px;
+      font-size: 11px;
+    }
+    .success-page .actions {
+      gap: 10px;
+    }
+    .success-page .btn {
+      padding: 12px 16px;
+      font-size: 14px;
+      border-radius: 11px;
+    }
+    .success-artwork-panel {
+      margin-top: 14px;
+      padding: 12px 10px 11px;
+      text-align: center;
+      background: linear-gradient(160deg, #0f241c 0%, #081510 55%, #0a1814 100%);
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.05),
+        0 10px 32px rgba(8, 24, 20, 0.18);
+    }
+    .success-artwork-panel img {
       display: block;
       width: 100%;
       max-width: 100%;
       height: auto;
-      border-radius: 12px;
-      box-shadow: var(--shadow);
+      max-height: clamp(168px, 30dvh, 252px);
+      object-fit: contain;
+      object-position: center;
+      margin: 0 auto;
+      border-radius: 10px;
     }
   </style>
 </head>
@@ -539,17 +697,20 @@ app.get("/auth/line/callback", async (req, res) => {
     await appendToSheet(row);
 
     const body = `
-      <div class="success-icon" aria-hidden="true">✓</div>
-      <div class="success-title">
-        <h1>ลงทะเบียนสำเร็จ</h1>
-        <p class="lead" style="margin-bottom:0">เข้าสู่งานเรียบร้อยแล้ว</p>
+      <div class="success-page">
+        <div class="success-icon" aria-hidden="true">✓</div>
+        <div class="success-title">
+          <h1>ลงทะเบียนสำเร็จ</h1>
+          <p class="lead">เข้าสู่งานเรียบร้อยแล้ว</p>
+        </div>
+        <div class="divider"></div>
+        <p class="eyebrow">ขั้นตอนถัดไป</p>
+        ${addOaButtonsHtml()}
+        ${checkinSuccessArtworkHtml()}
       </div>
-      <div class="divider"></div>
-      <p class="eyebrow" style="margin-bottom:10px">ขั้นตอนถัดไป</p>
-      ${addOaButtonsHtml()}
-      ${checkinSuccessArtworkHtml()}
     `;
     res.send(htmlPage("MALI — ลงทะเบียนสำเร็จ", body));
+    pushLineCheckinPrivilegeCard(lineUserId);
   } catch (error) {
     const lineBody =
       error.response?.data != null ? JSON.stringify(error.response.data) : "";
@@ -623,15 +784,17 @@ app.get("/auth/google/callback", async (req, res) => {
     await appendToSheet(row);
 
     const body = `
-      <div class="success-icon" aria-hidden="true">✓</div>
-      <div class="success-title">
-        <h1>ลงทะเบียนสำเร็จ</h1>
-        <p class="lead" style="margin-bottom:0">เข้าสู่งานเรียบร้อยแล้ว</p>
+      <div class="success-page">
+        <div class="success-icon" aria-hidden="true">✓</div>
+        <div class="success-title">
+          <h1>ลงทะเบียนสำเร็จ</h1>
+          <p class="lead">เข้าสู่งานเรียบร้อยแล้ว</p>
+        </div>
+        <div class="divider"></div>
+        <p class="eyebrow">ขั้นตอนถัดไป</p>
+        ${addOaButtonsHtml()}
+        ${checkinSuccessArtworkHtml()}
       </div>
-      <div class="divider"></div>
-      <p class="eyebrow" style="margin-bottom:10px">ขั้นตอนถัดไป</p>
-      ${addOaButtonsHtml()}
-      ${checkinSuccessArtworkHtml()}
     `;
     res.send(htmlPage("MALI — ลงทะเบียนสำเร็จ", body));
   } catch (error) {

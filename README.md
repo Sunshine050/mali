@@ -68,17 +68,18 @@ Open:
 2. ใน [Render](https://dashboard.render.com/) → **New** → **Blueprint** → เลือก repo ที่มี [`render.yaml`](render.yaml) หรือสร้าง **Web Service** เอง: Runtime Node, Build `npm install`, Start `npm start`, Health check path `/health`
 3. หลังได้ URL เช่น `https://mali-checkin.onrender.com` ให้ตั้ง **Environment** ใน Render (อย่า commit `.env`):
 
-| Key                                                   | ค่า                                                                                                                                            |
-| ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `BASE_URL`                                            | URL จริงของ service (ไม่มี `/` ท้าย) — **ต้องตรงกับ Callback ใน LINE ทุกตัวอักษร**; ถ้าไม่ใส่ โค้ดจะ fallback `RENDER_EXTERNAL_URL` ของ Render |
-| `PORT`                                                | ไม่ต้องใส่ — Render กำหนดให้                                                                                                                   |
-| `LINE_LOGIN_CHANNEL_ID` / `LINE_LOGIN_CHANNEL_SECRET` | จาก LINE Login channel                                                                                                                         |
-| `LINE_OA_ADD_FRIEND_URL` / `LINE_OA_BASIC_ID`         | ตามเดิม                                                                                                                                        |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`           | จาก Google Cloud                                                                                                                               |
-| `GOOGLE_REDIRECT_URI`                                 | `https://<host>/auth/google/callback`                                                                                                          |
-| `GOOGLE_SERVICE_ACCOUNT_JSON`                         | วาง **เนื้อหาไฟล์ JSON ทั้งก้อน** (บรรทัดเดียวหรือ escape ตามที่ Render รับ)                                                                   |
-| `GOOGLE_SHEET_ID` / `GOOGLE_SHEET_TAB`                | ตามชีตจริง                                                                                                                                     |
-| ค่าอื่นใน `.env` ที่ใช้ local                         | คัดลอกมาใส่ให้ครบ                                                                                                                              |
+| Key                                                                                 | ค่า                                                                                                                                                                               |
+| ----------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `BASE_URL`                                                                          | URL จริงของ service (ไม่มี `/` ท้าย) — **ต้องตรงกับ Callback ใน LINE ทุกตัวอักษร**; ถ้าไม่ใส่ โค้ดจะ fallback `RENDER_EXTERNAL_URL` ของ Render                                    |
+| `PORT`                                                                              | ไม่ต้องใส่ — Render กำหนดให้                                                                                                                                                      |
+| `LINE_LOGIN_CHANNEL_ID` / `LINE_LOGIN_CHANNEL_SECRET`                               | จาก LINE Login channel                                                                                                                                                            |
+| `LINE_OA_ADD_FRIEND_URL` / `LINE_OA_BASIC_ID`                                       | ตามเดิม                                                                                                                                                                           |
+| `LINE_MESSAGING_CHANNEL_ACCESS_TOKEN` หรือ `LINE_CHANNEL_ACCESS_TOKEN` (ถ้าต้องการ) | Channel access token ของ **Messaging API** (OA เดียวกับลิงก์เพิ่มเพื่อน) — ใส่แล้วหลังล็อกอิน LINE สำเร็จระบบจะ **push ข้อความ + การ์ด** เข้าแชททุกครั้ง (รวมผู้ที่แอดเพื่อนแล้ว) |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`                                         | จาก Google Cloud                                                                                                                                                                  |
+| `GOOGLE_REDIRECT_URI`                                                               | `https://<host>/auth/google/callback`                                                                                                                                             |
+| `GOOGLE_SERVICE_ACCOUNT_JSON`                                                       | วาง **เนื้อหาไฟล์ JSON ทั้งก้อน** (บรรทัดเดียวหรือ escape ตามที่ Render รับ)                                                                                                      |
+| `GOOGLE_SHEET_ID` / `GOOGLE_SHEET_TAB`                                              | ตามชีตจริง                                                                                                                                                                        |
+| ค่าอื่นใน `.env` ที่ใช้ local                                                       | คัดลอกมาใส่ให้ครบ                                                                                                                                                                 |
 
 4. **LINE Developers** → LINE Login channel → Callback URL เพิ่ม  
    `https://<host>/auth/line/callback`
@@ -88,7 +89,10 @@ Open:
 7. ลูกค้าเทส: เปิด `https://<host>/poster` พิมพ์ QR หรือสแกนจากมือถือ → `/checkin` → LINE / Google
 
 **หมายเหตุ:** แพลน `free` อาจหลับหลังไม่มี traffic — เทสเฟสแรกได้ ถ้าต้องการไม่หลับใช้แพลนมีค่า  
-**Webhook:** ไม่จำเป็นสำหรับเฟส “สแกน + ล็อกอิน + เขียน Sheet”
+**Webhook:** ไม่จำเป็นสำหรับเฟส “สแกน + ล็อกอิน + เขียน Sheet”  
+**LINE push การ์ด:** ถ้าใช้ `LINE_MESSAGING_CHANNEL_ACCESS_TOKEN` หรือ `LINE_CHANNEL_ACCESS_TOKEN` ระบบจะ **push ทุกครั้งหลังล็อกอิน LINE สำเร็จ** เป็น (1) ข้อความต้อนรับภาษาอังกฤษ (2) Flex การ์ดรูป + ปุ่ม `CLAIM YOUR PRIVILEGE` (ชดเชยการที่ OA Manager ทักทายได้แค่ครั้งแรก) — ต้องผูก **LINE Login กับบอท OA (Messaging API)** ให้ `userId` ตรงกัน  
+ถ้าผู้ใช้ยังไม่แอด OA ตอน callback จะ push ไม่ได้ (403 ใน log) — แนะนำให้ flow ล็อกอิน LINE ให้เพิ่นเพื่อนก่อนจบ หรือให้แอดแล้วสแกนเช็คอินรอบถัดไป  
+ปรับข้อความ/รูป/ปุ่มด้วย `LINE_PUSH_WELCOME_TEXT`, `LINE_PUSH_CARD_IMAGE_URL`, `LINE_PUSH_PRIVILEGE_BUTTON_URI` (ดู `.env.example`)
 
 ### Render — ข้อผิดพลาดที่พบบ่อย
 
