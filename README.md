@@ -90,9 +90,9 @@ Open:
 
 **หมายเหตุ:** แพลน `free` อาจหลับหลังไม่มี traffic — เทสเฟสแรกได้ ถ้าต้องการไม่หลับใช้แพลนมีค่า  
 **Webhook:** ไม่จำเป็นสำหรับเฟส “สแกน + ล็อกอิน + เขียน Sheet”  
-**LINE push การ์ด:** ถ้าใช้ `LINE_MESSAGING_CHANNEL_ACCESS_TOKEN` หรือ `LINE_CHANNEL_ACCESS_TOKEN` ระบบจะ **push ทุกครั้งหลังล็อกอิน LINE สำเร็จ** เป็น (1) ข้อความต้อนรับภาษาอังกฤษ (2) Flex การ์ดรูป + ปุ่ม `CLAIM YOUR PRIVILEGE` (ชดเชยการที่ OA Manager ทักทายได้แค่ครั้งแรก) — ต้องผูก **LINE Login กับบอท OA (Messaging API)** ให้ `userId` ตรงกัน  
+**LINE push หลังล็อกอิน:** ถ้าใช้ `LINE_MESSAGING_CHANNEL_ACCESS_TOKEN` หรือ `LINE_CHANNEL_ACCESS_TOKEN` ระบบจะ **push ทุกครั้งหลังล็อกอิน LINE สำเร็จ** เป็น (1) ข้อความต้อนรับ (2) **image message** ตามมาตรฐาน LINE (รูปเดียว ไม่มีปุ่ม/Flex — ชดเชยการที่ OA Manager ทักทายได้แค่ครั้งแรก) — ต้องผูก **LINE Login กับบอท OA (Messaging API)** ให้ `userId` ตรงกัน  
 ถ้าผู้ใช้ยังไม่แอด OA ตอน callback จะ push ไม่ได้ (403 ใน log) — แนะนำให้ flow ล็อกอิน LINE ให้เพิ่นเพื่อนก่อนจบ หรือให้แอดแล้วสแกนเช็คอินรอบถัดไป  
-ปรับข้อความ/รูป/ปุ่มด้วย `LINE_PUSH_WELCOME_TEXT`, `LINE_PUSH_CARD_IMAGE_URL`, `LINE_PUSH_PRIVILEGE_BUTTON_URI` (ดู `.env.example`)
+ปรับข้อความ/รูปด้วย `LINE_PUSH_WELCOME_TEXT`, `LINE_PUSH_CARD_IMAGE_URL` (ดู `.env.example`)
 
 ### Render — ข้อผิดพลาดที่พบบ่อย
 

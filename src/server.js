@@ -59,7 +59,7 @@ const LINE_LOGIN_CHANNEL_SECRET = process.env.LINE_LOGIN_CHANNEL_SECRET;
 const LINE_OA_ADD_FRIEND_URL = process.env.LINE_OA_ADD_FRIEND_URL;
 /** Basic ID เช่น @057xhooz — ใช้สร้างลิงก์ line:// เปิดแอป LINE โดยตรงบนมือถือ */
 const LINE_OA_BASIC_ID_RAW = (process.env.LINE_OA_BASIC_ID || "").trim();
-/** Messaging API (OA เดียวกับที่ให้แอดเพื่อน) — ถ้ามี จะ push การ์ดทุกครั้งหลังล็อกอิน LINE สำเร็จ */
+/** Messaging API (OA เดียวกับที่ให้แอดเพื่อน) — ถ้ามี จะ push ข้อความ + รูป (image) ทุกครั้งหลังล็อกอิน LINE สำเร็จ */
 const LINE_MESSAGING_CHANNEL_ACCESS_TOKEN = (
   process.env.LINE_MESSAGING_CHANNEL_ACCESS_TOKEN ||
   process.env.LINE_CHANNEL_ACCESS_TOKEN ||
@@ -220,77 +220,32 @@ function getLinePushWelcomeText() {
   return DEFAULT_LINE_PUSH_WELCOME;
 }
 
-/** รูปใน Flex การ์ด — ถ้าไม่ตั้ง ใช้รูปเดียวกับหน้าเว็บ */
+/** รูปสำหรับ push แบบ image — ถ้าไม่ตั้ง ใช้รูปเดียวกับหน้าเว็บ */
 function getLinePushCardImageUrl() {
   const c = (process.env.LINE_PUSH_CARD_IMAGE_URL || "").trim();
   return c || getCheckinSuccessArtworkUrl();
 }
 
-/** ปุ่ม CLAIM YOUR PRIVILEGE เปิด URL ไหน (LIFF / เว็บ / ลิงก์เพิ่มเพื่อน) */
-function getLinePushPrivilegeButtonUri() {
-  const u = (process.env.LINE_PUSH_PRIVILEGE_BUTTON_URI || "").trim();
-  if (u) {
-    return u;
-  }
-  return (LINE_OA_ADD_FRIEND_URL || "").trim();
-}
-
-function buildLinePrivilegeFlexBubble() {
-  const imgUrl = getLinePushCardImageUrl();
-  const btnUri = getLinePushPrivilegeButtonUri();
-  const bubble = {
-    type: "bubble",
-    size: "kilo",
-    hero: {
-      type: "image",
-      url: imgUrl,
-      size: "full",
-      aspectRatio: "13:20",
-      aspectMode: "fit",
-    },
-  };
-  if (btnUri) {
-    bubble.footer = {
-      type: "box",
-      layout: "vertical",
-      spacing: "sm",
-      contents: [
-        {
-          type: "button",
-          style: "secondary",
-          height: "sm",
-          action: {
-            type: "uri",
-            label: "CLAIM YOUR PRIVILEGE",
-            uri: btnUri,
-          },
-        },
-      ],
-    };
-  }
-  return bubble;
-}
-
 /**
- * ส่งชุดข้อความเหมือน OA Greeting แต่ทุกครั้งหลังล็อกอิน LINE สำเร็จ (เพื่อนเก่า/ใหม่ที่แอดแล้ว)
- * 1) ข้อความต้อนรับ 2) Flex การ์ด (รูป + ปุ่ม CLAIM ถ้ามี URL)
- * ต้องผูก LINE Login กับ Messaging API และตั้ง LINE_MESSAGING_CHANNEL_ACCESS_TOKEN
- * ถ้าผู้ใช้ยังไม่ได้แอด OA จะได้ 403 — แนะนำให้ล็อกอิน LINE หลังขั้นเพิ่นเพื่อนแล้ว หรือกดเพิ่มเพื่อนแล้วสแกนรอบใหม่
+ * หลังล็อกอิน LINE สำเร็จ: push ข้อความต้อนรับ + ข้อความประเภท image (มาตรฐาน LINE ไม่ใช้ Flex)
+ * ต้องผูก LINE Login กับ Messaging API และตั้ง token
+ * ถ้าผู้ใช้ยังไม่ได้แอด OA จะได้ 403 ใน log
  */
 async function pushLineCheckinPrivilegeCard(lineUserId) {
   if (!LINE_MESSAGING_CHANNEL_ACCESS_TOKEN || !lineUserId) {
     return;
   }
   const welcome = getLinePushWelcomeText();
+  const imgUrl = getLinePushCardImageUrl();
   const messages = [
     {
       type: "text",
       text: welcome,
     },
     {
-      type: "flex",
-      altText: "MALI — Claim your privilege",
-      contents: buildLinePrivilegeFlexBubble(),
+      type: "image",
+      originalContentUrl: imgUrl,
+      previewImageUrl: imgUrl,
     },
   ];
   const payload = { to: lineUserId, messages };
@@ -386,6 +341,7 @@ function htmlPage(title, body) {
       padding: 28px 22px;
       box-shadow: var(--shadow);
       border: 1px solid var(--border);
+      overflow: hidden;
     }
     .eyebrow {
       font-size: 12px;
@@ -519,27 +475,24 @@ function htmlPage(title, body) {
       font-size: 14px;
       border-radius: 11px;
     }
+    /* รูปโปรโมชัน: ไม่ใส่กล่องมืด / ไม่บีบสูง (เลิก letterboxing แถบข้าง) — เต็มความกว้างการ์ด */
     .success-artwork-panel {
-      margin-top: 14px;
-      padding: 12px 10px 11px;
+      margin: 18px -22px -28px;
+      padding: 0;
       text-align: center;
-      background: linear-gradient(160deg, #0f241c 0%, #081510 55%, #0a1814 100%);
-      border-radius: 14px;
-      border: 1px solid rgba(255, 255, 255, 0.07);
-      box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.05),
-        0 10px 32px rgba(8, 24, 20, 0.18);
+      background: transparent;
+      border: none;
+      border-radius: 0;
+      box-shadow: none;
+      width: calc(100% + 44px);
+      max-width: none;
     }
     .success-artwork-panel img {
       display: block;
       width: 100%;
-      max-width: 100%;
       height: auto;
-      max-height: clamp(168px, 30dvh, 252px);
-      object-fit: contain;
-      object-position: center;
-      margin: 0 auto;
-      border-radius: 10px;
+      margin: 0;
+      border-radius: 0 0 var(--radius) var(--radius);
     }
   </style>
 </head>
